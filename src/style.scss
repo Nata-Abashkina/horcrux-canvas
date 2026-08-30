@@ -1,0 +1,83 @@
+/* Базовый сброс и структура листа-сетки */
+@font-face {
+  font-family: 'Gabriela';
+  src: url(./assets/fonts/Gabriela.woff2) format('woff2');
+  font-weight: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Special Elite';
+  src: url(./assets/fonts/SpecialElite.woff2) format('woff2');
+  font-weight: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Underdog';
+  src: url(./assets/fonts/Underdog.woff2) format('woff2');
+  font-weight: normal;
+  font-display: swap;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background-color: #1a1a1a;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.diary-container {
+  width: 100%;
+  height: 100%;
+  background-color: #f2e6d0; // Цвет старого пергамента
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.7);
+  position: relative; // Контекст для абсолютного позиционирования кнопки
+}
+
+canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: crosshair;
+}
+
+/* Стилизация магической кнопки */
+.lang-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 10; // Строго поверх Canvas
+    
+  padding: 8px 14px;
+  font-family: 'Underdog';
+  font-size: 14px;
+  font-weight: bold;
+  color: #4a3b2c;
+    
+  background: transparent;
+  border: 2px solid #4a3b2c;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  opacity: 0.7;
+
+    &:hover {
+      opacity: 1;
+      background-color: rgba(74, 59, 44, 0.1);
+      transform: scale(1.05);
+    }
+
+    &:active {
+      transform: scale(0.95);
+    }
+}
