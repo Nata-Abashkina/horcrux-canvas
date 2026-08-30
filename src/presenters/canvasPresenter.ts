@@ -29,6 +29,11 @@ export class CanvasPresenter implements ICanvasPresenter {
 
   private typedChars: IChronologicalChar[] = [];
   private sessionStartTime: number = 0;
+  
+  private aiResponseAnimFrameId: number | null = null;
+  private aiResponseText: string = '';
+  private aiResponseTimeoutId: number | null = null;
+  private aiResponseShown: boolean = false;
 
   constructor(
     view: ICanvasView, 
@@ -42,6 +47,22 @@ export class CanvasPresenter implements ICanvasPresenter {
     this.OCRService = OCRService;
     this.diaryModel = diaryModel;
     this.canvas = canvas;
+
+    const existingOnDataChanged = this.diaryModel.onDataChanged;
+
+    this.diaryModel.onDataChanged = () => {
+      if (existingOnDataChanged) {
+        existingOnDataChanged();
+      }
+      
+      const aiResponse = this.diaryModel.aiResponse;
+      
+      if (aiResponse?.isVisible && aiResponse.text && !this.aiResponseShown) {
+        this.aiResponseShown = true;
+        this.diaryModel.aiResponse = null;
+        this.animateAIResponseIn(aiResponse.text);
+      }
+    };
   }
 
   init(): void {
@@ -50,21 +71,206 @@ export class CanvasPresenter implements ICanvasPresenter {
     const dpr = window.devicePixelRatio || 1;
     this.view.setDimensions(this.currentWidth, this.currentHeight, dpr);
 
-    this.canvas.addEventListener("pointerdown", (e: PointerEvent) => this.handlePointerDown(e));
-    this.canvas.addEventListener("pointermove", (e: PointerEvent) => this.handlePointerMove(e));
-    this.canvas.addEventListener("pointerup", (e: PointerEvent) => this.handlePointerUp(e));
-  
+    this.canvas.addEventListener("pointerdown", (e: PointerEvent) => {
+      if (this.diaryModel.isLocked) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+      this.handlePointerDown(e);
+    });
+
+    this.canvas.addEventListener("pointermove", (e: PointerEvent) => {
+      if (this.diaryModel.isLocked) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+      this.handlePointerMove(e);
+    });
+
+    this.canvas.addEventListener("pointerup", (e: PointerEvent) => {
+      if (this.diaryModel.isLocked) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+      this.handlePointerUp(e);
+    });
+
+    window.addEventListener("keydown", (e: KeyboardEvent) => {
+      if (this.diaryModel.isLocked) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+      this.handleDesktopInput(e);
+    }, true);
+
+    document.addEventListener("keydown", (e: KeyboardEvent) => {
+      if (this.diaryModel.isLocked) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }, true);
+
+    document.addEventListener("pointerdown", (e: PointerEvent) => {
+      if (this.diaryModel.isLocked) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }, true);
+
     window.addEventListener("resize", () => this.handleResize());
-    window.addEventListener("keydown", (e: KeyboardEvent) => this.handleDesktopInput(e));
+  }
+
+  private getResponsiveFontSize(baseSize: number): number {
+    const minScreen = 320;
+    const maxScreen = 1920;
+    const ratio = (this.currentWidth - minScreen) / (maxScreen - minScreen);
+    const clampedRatio = Math.max(0, Math.min(1, ratio));
+    return baseSize * (0.5 + 0.5 * clampedRatio);
+  }
+
+  private getResponsiveSpacing(baseSpacing: number): number {
+    const minScreen = 320;
+    const maxScreen = 1920;
+    const ratio = (this.currentWidth - minScreen) / (maxScreen - minScreen);
+    const clampedRatio = Math.max(0, Math.min(1, ratio));
+    return baseSpacing * (0.5 + 0.5 * clampedRatio);
+  }
+
+  private animateAIResponseIn(text: string): void {
+    if (this.aiResponseAnimFrameId !== null) {
+      cancelAnimationFrame(this.aiResponseAnimFrameId);
+    }
+    
+    if (this.aiResponseTimeoutId !== null) {
+      clearTimeout(this.aiResponseTimeoutId);
+      this.aiResponseTimeoutId = null;
+    }
+    
+    this.aiResponseText = text;
+    this.diaryModel.isLocked = true;
+    
+    const totalFrames = 300;
+    let currentFrame = 0;
+    
+    const tick = () => {
+      currentFrame++;
+      const progress = currentFrame / totalFrames;
+      const alpha = this.bezierEase(progress);
+      
+      this.view.clear(this.currentWidth, this.currentHeight);
+      this.renderAIResponseText(alpha);
+      
+      if (currentFrame < totalFrames) {
+        this.aiResponseAnimFrameId = requestAnimationFrame(tick);
+      } else {
+        this.view.clear(this.currentWidth, this.currentHeight);
+        this.renderAIResponseText(1);
+        this.aiResponseAnimFrameId = null;
+        
+        this.aiResponseTimeoutId = window.setTimeout(() => {
+          this.animateAIResponseOut();
+        }, 5000);
+      }
+    };
+    
+    this.aiResponseAnimFrameId = requestAnimationFrame(tick);
+  }
+
+  private animateAIResponseOut(): void {
+    if (this.aiResponseAnimFrameId !== null) {
+      cancelAnimationFrame(this.aiResponseAnimFrameId);
+    }
+    
+    if (this.aiResponseTimeoutId !== null) {
+      clearTimeout(this.aiResponseTimeoutId);
+      this.aiResponseTimeoutId = null;
+    }
+    
+    this.diaryModel.isLocked = true;
+    
+    const totalFrames = 300;
+    let currentFrame = 0;
+    
+    const tick = () => {
+      currentFrame++;
+      const progress = currentFrame / totalFrames;
+      const alpha = 1 - this.bezierEase(progress);
+      
+      this.view.clear(this.currentWidth, this.currentHeight);
+      this.renderAIResponseText(alpha);
+      
+      if (currentFrame < totalFrames) {
+        this.aiResponseAnimFrameId = requestAnimationFrame(tick);
+      } else {
+        this.view.clear(this.currentWidth, this.currentHeight);
+        this.aiResponseAnimFrameId = null;
+        this.aiResponseText = '';
+        this.aiResponseShown = false;
+        
+        this.diaryModel.isLocked = false;
+        this.diaryModel.aiResponse = null;
+      }
+    };
+    
+    this.aiResponseAnimFrameId = requestAnimationFrame(tick);
+  }
+
+  private bezierEase(t: number): number {
+    return t * t * (3 - 2 * t);
+  }
+
+  private renderAIResponseText(alpha: number): void {
+    if (!this.aiResponseText || alpha <= 0) return;
+    
+    const viewWithContext = this.view as ICanvasViewWithContext;
+    const ctx = viewWithContext.ctx;
+    
+    if (!ctx) return;
+    
+    const fontSize = this.getResponsiveFontSize(80);
+    const lineHeight = this.getResponsiveSpacing(90);
+    const startX = this.getResponsiveSpacing(50);
+    const startY = this.getResponsiveSpacing(400);
+    const maxWidth = this.currentWidth - startX * 2;
+    
+    ctx.save();
+    ctx.font = `${fontSize}px Gabriela`;
+    ctx.fillStyle = "#1a1a3a";
+    ctx.globalAlpha = alpha;
+    
+    const words = this.aiResponseText.split(' ');
+    let line = '';
+    let y = startY;
+    
+    for (const word of words) {
+      const testLine = line ? `${line} ${word}` : word;
+      const metrics = ctx.measureText(testLine);
+      
+      if (metrics.width > maxWidth && line) {
+        ctx.fillText(line, startX, y);
+        line = word;
+        y += lineHeight;
+      } else {
+        line = testLine;
+      }
+    }
+    
+    if (line) {
+      ctx.fillText(line, startX, y);
+    }
+    
+    ctx.restore();
   }
 
   private handlePointerDown(e: PointerEvent): void {
-    // ЖЕСТКИЙ ВАШ ЗАМОК: Если тикает таймер клавиатуры — мышь идет в жопу
     if (this.diaryModel.isLocked || (this.ocrTimeoutId !== null && this.isTyping)) {
       return;
     }
 
-    // Если рисование продолжается в рамках одной сессии, сбрасываем ТОЛЬКО графический таймер
     if (this.ocrTimeoutId !== null && this.isDrawing) {
       window.clearTimeout(this.ocrTimeoutId);
       this.ocrTimeoutId = null;
@@ -116,31 +322,28 @@ export class CanvasPresenter implements ICanvasPresenter {
       return;
     }
 
-    // Обратите внимание: isDrawing остается true, пока не кончится дебаунс! Это держит Mutex запертым
     if (this.ocrTimeoutId !== null) {
       window.clearTimeout(this.ocrTimeoutId);
     }
 
     this.ocrTimeoutId = window.setTimeout(() => {
-      this.isDrawing = false; // Сбрасываем флаг только перед анимацией
+      this.isDrawing = false;
       this.executeAbsorptionLoop();
     }, 1200);
   }
 
   private handleDesktopInput(e: KeyboardEvent): void {
-    // ЖЕСТКИЙ ВАШ ЗАМОК: Если тикает таймер мыши — клавиатура мертва
     if (this.diaryModel.isLocked || (this.ocrTimeoutId !== null && this.isDrawing)) {
       return;
     }
 
     if (e.key === "Enter") {
-      this.caretX = 50; 
-      this.caretY += 130; 
+      this.caretX = this.getResponsiveSpacing(50);
+      this.caretY += this.getResponsiveSpacing(130);
       return;
     }
 
     if (e.key.length === 1) {
-      // Продлевать таймер может только клавиатурная сессия
       if (this.ocrTimeoutId !== null && this.isTyping) {
         window.clearTimeout(this.ocrTimeoutId);
       }
@@ -151,7 +354,8 @@ export class CanvasPresenter implements ICanvasPresenter {
         this.sessionStartTime = performance.now();
       }
 
-      this.view.drawTextChar(e.key, this.caretX, this.caretY, "104px 'Special Elite'");
+      const fontSize = this.getResponsiveFontSize(80);
+      this.view.drawTextChar(e.key, this.caretX, this.caretY, `${fontSize}px 'Special Elite'`);
 
       this.typedChars.push({
         char: e.key,
@@ -160,15 +364,15 @@ export class CanvasPresenter implements ICanvasPresenter {
         timestamp: performance.now() - this.sessionStartTime
       });
 
-      this.caretX += 85;
+      this.caretX += this.getResponsiveSpacing(65);
 
-      if (this.caretX > this.currentWidth - 50) {
-        this.caretX = 50;
-        this.caretY += 130;
+      if (this.caretX > this.currentWidth - this.getResponsiveSpacing(50)) {
+        this.caretX = this.getResponsiveSpacing(50);
+        this.caretY += this.getResponsiveSpacing(130);
       }
 
       this.ocrTimeoutId = window.setTimeout(() => {
-        this.isTyping = false; // Сбрасываем флаг только перед анимацией
+        this.isTyping = false;
         this.executeAbsorptionLoop();
       }, 1200);
     }
@@ -313,6 +517,8 @@ export class CanvasPresenter implements ICanvasPresenter {
     globalProgress: number, 
     duration: number
   ): void {
+    const fontSize = this.getResponsiveFontSize(80);
+    
     for (let i = 0; i < this.typedChars.length; i++) {
       const tc = this.typedChars[i];
       const waveDelay = tc.timestamp / (duration + 1000);
@@ -325,27 +531,10 @@ export class CanvasPresenter implements ICanvasPresenter {
 
       ctx.save();
       this.view.setAlpha(opacity);
-      this.view.drawTextChar(tc.char, tc.x, tc.y, "104px 'Special Elite'");
+      this.view.drawTextChar(tc.char, tc.x, tc.y, `${fontSize}px 'Special Elite'`);
       ctx.restore();
     }
   }
-
-  /*private triggerOCRService(bufferedCanvas: HTMLCanvasElement): void {
-    this.diaryModel.isLocked = true;
-    this.diaryModel.isLoading = true;
-
-    this.OCRService.recognize(bufferedCanvas, this.diaryModel.config.ocr.language)
-      .then(() => {
-        this.diaryModel.isLoading = false;
-      })
-      .catch(() => {
-        this.diaryModel.isLocked = false;
-        this.diaryModel.isLoading = false;
-      })
-      .finally(() => {
-        this.finalizeSession();
-      });
-  }*/
 
   private triggerOCRService(bufferedCanvas: HTMLCanvasElement): void {
     this.diaryModel.isLocked = true;
@@ -353,19 +542,14 @@ export class CanvasPresenter implements ICanvasPresenter {
 
     this.OCRService.recognize(bufferedCanvas, this.diaryModel.config.ocr.language)
       .then((recognizedText: string) => {
-        // Сначала разблокируем isLoading
         this.diaryModel.isLoading = false;
         
-        // Потом передаем текст
         if (recognizedText && recognizedText.trim().length > 0) {
           this.diaryModel.text = recognizedText;
-        } else {
-          this.diaryModel.isLocked = false;
         }
       })
       .catch((error: Error) => {
         console.error('Ошибка OCR:', error);
-        this.diaryModel.isLocked = false;
         this.diaryModel.isLoading = false;
       })
       .finally(() => {
@@ -373,17 +557,14 @@ export class CanvasPresenter implements ICanvasPresenter {
       });
   }
 
-
-    
   private finalizeSession(): void {
     this.ocrTimeoutId = null;
-    this.caretX = 50;
-    this.caretY = 130;
+    this.caretX = this.getResponsiveSpacing(50);
+    this.caretY = this.getResponsiveSpacing(130);
     this.isDrawing = false;
     this.isTyping = false;
     this.typedChars = [];
     this.strokeService.clear();
-    this.view.clear(this.currentWidth, this.currentHeight);
   }
     
   handleResize(): void {

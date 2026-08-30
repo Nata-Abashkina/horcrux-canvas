@@ -52,18 +52,20 @@ const canvasView = new CanvasView(ctx);
 const inputView = new InputView(canvasElement, langButton);
 
 // СОБИРАЕМ ПРЕЗЕНТЕРЫ
+// СНАЧАЛА AppPresenter — он установит свой onDataChanged
+const appPresenter = new AppPresenter(
+  diaryModel,
+  guardrailsService,
+  inputView
+);
+
+// ПОТОМ CanvasPresenter — он обернёт обработчик AppPresenter
 const canvasPresenter = new CanvasPresenter(
   canvasView,
   strokeService,
   ocrService,
   diaryModel,
   canvasElement
-);
-
-const appPresenter = new AppPresenter(
-  diaryModel,
-  guardrailsService,
-  inputView
 );
 
 // ОФИЦИАЛЬНЫЙ СТАРТ СИСТЕМЫ

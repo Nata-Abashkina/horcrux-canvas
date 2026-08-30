@@ -34,16 +34,19 @@ export interface IStrokeService {
   addPoint(pixelX: number, pixelY: number, canvasWidth: number, canvasHeight: number, isNew: boolean): void;
 }
 
+export interface IAIResponse {
+  readonly text: string;
+  readonly timestamp: number;
+  readonly isVisible: boolean;
+}
+
 export interface IDiaryModel {
-  get isLoading(): boolean;
-  set isLoading(value: boolean);
-  get isLocked(): boolean;
-  set isLocked(value: boolean);
-  get config(): ILangInterface;
-  set config(value: ILangInterface);
-  get languages(): Record<string, ILangInterface>;
-  get text(): string;
-  set text(value: string);
+  isLoading: boolean;
+  isLocked: boolean;
+  config: ILangInterface;
+  text: string;
+  aiResponse: IAIResponse | null;
+  languages: Record<string, ILangInterface>;
   onDataChanged: (() => void) | null;
 }
 

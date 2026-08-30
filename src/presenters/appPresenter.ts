@@ -27,33 +27,27 @@ export class AppPresenter {
     this.lastLocale = this.diaryModel.config.locale;
 
     this.diaryModel.onDataChanged = () => {
-  if (this.isProcessingEvent) {
-    return;
+      if (this.isProcessingEvent) {
+        return;
+      }
+
+      if (this.diaryModel.text.trim().length > 0 && this.diaryModel.isLocked) {
+        this.handleModelUpdate().catch((error) => {
+          console.error("Критический сбой текстового контура:", error);
+        });
+      }
+    };
   }
 
-  // Проверяем смену языка
-  if (this.diaryModel.config.locale !== this.lastLocale) {
-    console.log('Язык изменился на:', this.diaryModel.config.locale);
-    this.lastLocale = this.diaryModel.config.locale;
-    return;
-  }
-
-  // Обработка текста
-  if (this.diaryModel.isLocked && this.diaryModel.text.trim().length > 0) {
-    this.handleModelUpdate().catch((error) => {
-      console.error("Критический сбой текстового контура:", error);
-      this.unlockSystemImmediate();
-    });
-  }
-};
-  }
-
-  public bindEvents(buttonElement: HTMLButtonElement): void {
-    buttonElement.addEventListener('click', (e) => {
-      e.preventDefault();
-      this.handleLanguageToggle();
-    });
-  }
+public bindEvents(buttonElement: HTMLButtonElement): void {
+  buttonElement.setAttribute('type', 'button');
+  
+  buttonElement.addEventListener('click', (e) => {
+    e.preventDefault();
+    buttonElement.blur();
+    this.handleLanguageToggle();
+  });
+}
 
   public initPersona(config: ILangInterface): void {
     this.chatHistory.length = 0;
@@ -94,12 +88,8 @@ export class AppPresenter {
       return;
     }
 
-    // Меняем конфиг — это вызовет onDataChanged()
     this.diaryModel.config = nextConfig;
-    
-    // Обновляем lastLocale ПОСЛЕ изменения конфига
     this.lastLocale = nextConfig.locale;
-    
     this.initPersona(nextConfig);
     this.inputView.updateLangButton(nextConfig.locale.toUpperCase());
   }
@@ -127,11 +117,20 @@ export class AppPresenter {
         this.pushToHistory('assistant', finalResponse);
       }
 
-      this.inputView.renderAIResponse(finalResponse, 50, 130, 104);
+      this.diaryModel.text = '';
+      
+      this.diaryModel.aiResponse = {
+        text: finalResponse,
+        timestamp: Date.now(),
+        isVisible: true
+      };
+
+      this.diaryModel.isLoading = false;
+      // isLocked НЕ ТРОГАЕМ — CanvasPresenter снимет после исчезновения
 
     } catch (error) {
-      this.unlockSystemImmediate();
-      throw error;
+      console.error('Ошибка в handleModelUpdate:', error);
+      // НЕ снимаем блокировку
     } finally {
       this.isProcessingEvent = false;
     }
@@ -141,12 +140,5 @@ export class AppPresenter {
     await new Promise((resolve) => setTimeout(resolve, 1000));
     const lastUserMessage = this.chatHistory[this.chatHistory.length - 1]?.content || '';
     return `Я слышу тебя. Ты написал: "${lastUserMessage}". Но готов ли ты зайти дальше?`;
-  }
-
-  private unlockSystemImmediate(): void {
-    this.isProcessingEvent = true;
-    this.diaryModel.isLocked = false;
-    this.diaryModel.isLoading = false;
-    this.isProcessingEvent = false;
   }
 }
