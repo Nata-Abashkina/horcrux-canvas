@@ -70,7 +70,7 @@ export class Hufflepuff implements IEasterEgg {
 
         const words = response.split(' ');
         let line = '';
-        let textY = height * 0.65;
+        let textY = height * 0.7;
         const maxWidth = width - fontSize * 2;
         const lineHeight = fontSize * 1.3;
         const startX = fontSize;
