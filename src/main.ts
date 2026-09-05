@@ -11,6 +11,7 @@ import { langRU } from "./config/lang.ru";
 import type { ILangInterface } from "./config/lang.interface";
 
 import { AvadaKedavra } from './easterEggs/effects/AvadaKedavra';
+import { Hufflepuff } from "./easterEggs/effects/Hufflepuff";
 import { EasterEggRegistry } from './easterEggs/EasterEggRegistry';
 
 // Все доступные языки
@@ -72,6 +73,8 @@ const canvasPresenter = new CanvasPresenter(
 );
 
 EasterEggRegistry.register(new AvadaKedavra());
+
+EasterEggRegistry.register(new Hufflepuff());
 
 // ОФИЦИАЛЬНЫЙ СТАРТ СИСТЕМЫ
 appPresenter.initPersona(diaryModel.config);

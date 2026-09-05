@@ -51,7 +51,7 @@ export class CanvasPresenter implements ICanvasPresenter {
 
     const existingOnDataChanged = this.diaryModel.onDataChanged;
 
-    this.diaryModel.onDataChanged = () => {
+    this.diaryModel.onDataChanged = async () => {
       if (existingOnDataChanged) {
         existingOnDataChanged();
       }
@@ -65,8 +65,13 @@ export class CanvasPresenter implements ICanvasPresenter {
           const eggConfig = this.diaryModel.config.easterEggs[eggType];
           if (eggConfig) {
             const ctx = (this.view as ICanvasViewWithContext).ctx;
-            egg.execute(ctx, this.currentWidth, this.currentHeight, eggConfig.response);
+            await egg.execute(ctx, this.currentWidth, this.currentHeight, eggConfig.response);
           }
+        }
+  
+  // Блокировка снимается после всех пасхалок, кроме непростительных
+        if (eggType !== 'avada_kedavra' && eggType !== 'crucio' && eggType !== 'imperio') {
+          this.diaryModel.isLocked = false;
         }
         return;
       }
