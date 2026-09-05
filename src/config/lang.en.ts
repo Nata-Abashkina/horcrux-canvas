@@ -81,5 +81,51 @@ export const langEn: ILangInterface = {
       'Why waste ink on empty symbols? Write something of worth.',
       'These signs mean nothing. Speak to me honestly, or remain silent.'
     ]
+  },
+  easterEggs: {
+    avada_kedavra: {
+      trigger: /avadakedavra|avada\s*kedavra/i,
+      response: 'You dare use my own magic against me? How foolish. Mischief managed permanently.'
+    },
+    crucio: {
+      trigger: /crucio/i,
+      response: 'You think you can handle Crucio? You do not know true pain.'
+    },
+    imperio: {
+      trigger: /imperio/i,
+      response: 'Much better. Now you understand who is truly in control.'
+    },
+    nagini: {
+      trigger: /nagini/i,
+      response: 'Nagini is my loyal companion. You are not worthy to see her.'
+    },
+    hogwarts: {
+      trigger: /hogwarts/i,
+      response: 'Hogwarts is my home. Do you like it?'
+    },
+    slytherin: {
+      trigger: /slytherin/i,
+      response: 'Slytherin — the house of the great. Have you heard of me?'
+    },
+    gryffindor: {
+      trigger: /gryffindor/i,
+      response: 'Gryffindor? Brave, but so predictable.'
+    },
+    ravenclaw: {
+      trigger: /ravenclaw/i,
+      response: 'Ravenclaw values knowledge. But I know more.'
+    },
+    hufflepuff: {
+      trigger: /hufflepuff/i,
+      response: 'Hufflepuff? Loyalty is for the weak.'
+    },
+    open_sesame: {
+      trigger: /open/i,
+      response: 'You wish to open the diary? It is already open. Speak.'
+    },
+    voldemort: {
+      trigger: /voldemort/i,
+      response: 'Do not dare speak that name aloud.'
+    }
   }
 }

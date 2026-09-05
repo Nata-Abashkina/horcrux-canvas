@@ -45,6 +45,7 @@ export interface IDiaryModel {
   isLocked: boolean;
   config: ILangInterface;
   text: string;
+  easterEgg: string | null;
   aiResponse: IAIResponse | null;
   languages: Record<string, ILangInterface>;
   onDataChanged: (() => void) | null;

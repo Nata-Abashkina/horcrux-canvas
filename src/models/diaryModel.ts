@@ -8,6 +8,7 @@ export class DiaryModel implements IDiaryModel {
   private _inputLock: boolean = false;
   private _activeConfig: ILangInterface;
   private _text: string = '';
+  private _easterEgg: string | null = null;
   private _aiResponse: IAIResponse | null = null;
   
   public readonly languagesMap: Record<string, ILangInterface> = { ru: langRU, en: langEn };
@@ -60,6 +61,17 @@ export class DiaryModel implements IDiaryModel {
 
   set text(value: string) {
     this._text = value;
+    if (this.onDataChanged) {
+      this.onDataChanged();
+    }
+  }
+
+  get easterEgg(): string | null {
+    return this._easterEgg;
+  }
+
+  set easterEgg(value: string | null) {
+    this._easterEgg = value;
     if (this.onDataChanged) {
       this.onDataChanged();
     }

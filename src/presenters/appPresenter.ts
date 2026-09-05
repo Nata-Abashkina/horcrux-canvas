@@ -96,16 +96,26 @@ public bindEvents(buttonElement: HTMLButtonElement): void {
 
   private async handleModelUpdate(): Promise<void> {
     this.isProcessingEvent = true;
-    
+  
     try {
       const config = this.diaryModel.config;
+      const recognizedText = this.diaryModel.text;
 
       if (this.chatHistory.length === 0) {
         this.initPersona(config);
       }
 
-      const recognizedText = this.diaryModel.text;
+    // ПРОВЕРКА ПАСХАЛОК ПЕРВОЙ
+      const eggType = this.findEasterEgg(recognizedText, config);
 
+      if (eggType) {
+        this.diaryModel.text = '';
+        this.diaryModel.easterEgg = eggType;
+        this.diaryModel.isLoading = false;
+        return;
+      }
+
+    // Затем guardrails
       let finalResponse = '';
       const guardrailsResult = this.guardrailsService.validate(recognizedText, config);
 
@@ -118,7 +128,6 @@ public bindEvents(buttonElement: HTMLButtonElement): void {
       }
 
       this.diaryModel.text = '';
-      
       this.diaryModel.aiResponse = {
         text: finalResponse,
         timestamp: Date.now(),
@@ -126,14 +135,24 @@ public bindEvents(buttonElement: HTMLButtonElement): void {
       };
 
       this.diaryModel.isLoading = false;
-      // isLocked НЕ ТРОГАЕМ — CanvasPresenter снимет после исчезновения
 
     } catch (error) {
       console.error('Ошибка в handleModelUpdate:', error);
-      // НЕ снимаем блокировку
     } finally {
       this.isProcessingEvent = false;
     }
+  }
+
+  private findEasterEgg(text: string, config: ILangInterface): string | null {
+    const normalized = text.toLowerCase().replace(/\s+/g, '');
+  
+    for (const [type, egg] of Object.entries(config.easterEggs)) {
+      if (egg.trigger.test(normalized)) {
+        return type;
+      }
+    }
+  
+    return null;
   }
 
   private async fetchAIResponse(): Promise<string> {

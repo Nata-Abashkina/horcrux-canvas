@@ -1,4 +1,5 @@
 import type { ICanvasPresenter, ICanvasView, IDiaryModel, IOCRService, IStrokeService, IPixelPoint } from "../types";
+import { EasterEggRegistry } from '../easterEggs/EasterEggRegistry';
 
 interface IChronologicalChar {
   char: string;
@@ -53,6 +54,21 @@ export class CanvasPresenter implements ICanvasPresenter {
     this.diaryModel.onDataChanged = () => {
       if (existingOnDataChanged) {
         existingOnDataChanged();
+      }
+
+      const eggType = this.diaryModel.easterEgg;
+
+      if (eggType) {
+        this.diaryModel.easterEgg = null;
+        const egg = EasterEggRegistry.find(eggType);
+        if (egg) {
+          const eggConfig = this.diaryModel.config.easterEggs[eggType];
+          if (eggConfig) {
+            const ctx = (this.view as ICanvasViewWithContext).ctx;
+            egg.execute(ctx, this.currentWidth, this.currentHeight, eggConfig.response);
+          }
+        }
+        return;
       }
       
       const aiResponse = this.diaryModel.aiResponse;
@@ -234,7 +250,7 @@ export class CanvasPresenter implements ICanvasPresenter {
     const fontSize = this.getResponsiveFontSize(80);
     const lineHeight = this.getResponsiveSpacing(90);
     const startX = this.getResponsiveSpacing(50);
-    const startY = this.getResponsiveSpacing(400);
+    const startY = this.currentHeight * 0.25;
     const maxWidth = this.currentWidth - startX * 2;
     
     ctx.save();

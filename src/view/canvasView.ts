@@ -70,7 +70,7 @@ export class CanvasView implements ICanvasView {
     this.ctx.globalAlpha = 1.0;
     
     this.ctx.strokeStyle = "#2b2b2b";
-    this.ctx.lineWidth = 30;
+    this.ctx.lineWidth = 2;
     this.ctx.lineCap = "round";
     this.ctx.lineJoin = "round";
   }

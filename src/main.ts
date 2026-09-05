@@ -10,6 +10,9 @@ import { langEn } from "./config/lang.en";
 import { langRU } from "./config/lang.ru";
 import type { ILangInterface } from "./config/lang.interface";
 
+import { AvadaKedavra } from './easterEggs/effects/AvadaKedavra';
+import { EasterEggRegistry } from './easterEggs/EasterEggRegistry';
+
 // Все доступные языки
 const languagesMap: Record<string, ILangInterface> = { ru: langRU, en: langEn };
 
@@ -67,6 +70,8 @@ const canvasPresenter = new CanvasPresenter(
   diaryModel,
   canvasElement
 );
+
+EasterEggRegistry.register(new AvadaKedavra());
 
 // ОФИЦИАЛЬНЫЙ СТАРТ СИСТЕМЫ
 appPresenter.initPersona(diaryModel.config);
