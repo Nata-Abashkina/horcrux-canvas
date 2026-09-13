@@ -61,18 +61,20 @@ export class CanvasPresenter implements ICanvasPresenter {
       if (eggType) {
         this.diaryModel.easterEgg = null;
         const egg = EasterEggRegistry.find(eggType);
-        if (egg) {
-          const eggConfig = this.diaryModel.config.easterEggs[eggType];
-          if (eggConfig) {
-            const ctx = (this.view as ICanvasViewWithContext).ctx;
-            await egg.execute(ctx, this.currentWidth, this.currentHeight, eggConfig.response);
+        const eggConfig = this.diaryModel.config.easterEggs[eggType];
+
+        if (egg && eggConfig) {
+          const ctx = (this.view as ICanvasViewWithContext).ctx;
+          await egg.execute(ctx, this.currentWidth, this.currentHeight, eggConfig.response);
+
+          if (eggConfig.finalize !== 'never-returns') {
+            this.diaryModel.isLocked = false;
           }
-        }
-  
-  // Блокировка снимается после всех пасхалок, кроме непростительных
-        if (eggType !== 'avada_kedavra' && eggType !== 'crucio' && eggType !== 'imperio') {
+        } else {
+          // Пасхалка не найдена — снимаем блокировку, чтобы не повесить приложение
           this.diaryModel.isLocked = false;
         }
+
         return;
       }
       
@@ -376,7 +378,7 @@ export class CanvasPresenter implements ICanvasPresenter {
       }
 
       const fontSize = this.getResponsiveFontSize(80);
-      this.view.drawTextChar(e.key, this.caretX, this.caretY, `${fontSize}px 'Special Elite'`);
+      this.view.drawTextChar(e.key, this.caretX, this.caretY, `${fontSize}px 'WDXL Lubrifont TC'`);
 
       this.typedChars.push({
         char: e.key,
@@ -552,7 +554,7 @@ export class CanvasPresenter implements ICanvasPresenter {
 
       ctx.save();
       this.view.setAlpha(opacity);
-      this.view.drawTextChar(tc.char, tc.x, tc.y, `${fontSize}px 'Special Elite'`);
+      this.view.drawTextChar(tc.char, tc.x, tc.y, `${fontSize}px 'WDXL Lubrifont TC'`);
       ctx.restore();
     }
   }

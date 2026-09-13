@@ -85,47 +85,70 @@ export const langEn: ILangInterface = {
   easterEggs: {
     avada_kedavra: {
       trigger: /avadakedavra|avada\s*kedavra/i,
-      response: 'You dare use my own magic against me? How foolish. Mischief managed permanently.'
+      response: 'You dare use my own magic against me? How foolish. Mischief managed permanently.',
+      finalize: 'never-returns',
+      persistentArtifacts: false
     },
     crucio: {
       trigger: /crucio/i,
-      response: 'You think you can handle Crucio? You do not know true pain.'
+      response: 'You think you can handle Crucio? You do not know true pain.',
+      finalize: 'default',
+      persistentArtifacts: false
     },
     imperio: {
       trigger: /imperio/i,
-      response: 'Much better. Now you understand who is truly in control.'
+      response: 'Much better. Now you understand who is truly in control.',
+      finalize: 'default',
+      persistentArtifacts: false
     },
     nagini: {
       trigger: /nagini/i,
-      response: 'Nagini is my loyal companion. You are not worthy to see her.'
+      response: 'Nagini is my loyal companion. You are not worthy to see her.',
+      finalize: 'default',
+      persistentArtifacts: false,
+      keepImageAfterFade: true
     },
     hogwarts: {
       trigger: /hogwarts/i,
-      response: 'Hogwarts is my home. Do you like it?'
+      response: 'Hogwarts is my home. Do you like it?',
+      finalize: 'default',
+      persistentArtifacts: false
     },
     slytherin: {
       trigger: /slytherin/i,
-      response: 'Slytherin — the house of the great. Have you heard of me?'
+      response: 'Slytherin — the house of the great. Have you heard of me?',
+      finalize: 'default',
+      persistentArtifacts: false
     },
     gryffindor: {
       trigger: /gryffindor/i,
-      response: 'Gryffindor? Brave, but so predictable.'
+      response: 'Gryffindor? Brave, but so predictable.',
+      finalize: 'default',
+      persistentArtifacts: false
     },
     ravenclaw: {
       trigger: /ravenclaw/i,
-      response: 'Ravenclaw values knowledge. But I know more.'
+      response: 'Ravenclaw values knowledge. But I know more.',
+      finalize: 'default',
+      persistentArtifacts: false
     },
     hufflepuff: {
       trigger: /hufflepuff/i,
-      response: 'Hufflepuff? Loyalty is for the weak.'
+      response: 'Hufflepuff? Loyalty is for the weak.',
+      finalize: 'default',
+      persistentArtifacts: false
     },
     open_sesame: {
       trigger: /open/i,
-      response: 'You wish to open the diary? It is already open. Speak.'
+      response: 'You wish to open the diary? It is already open. Speak.',
+      finalize: 'default',
+      persistentArtifacts: false
     },
     voldemort: {
       trigger: /voldemort/i,
-      response: 'Do not dare speak that name aloud.'
+      response: 'Do not dare speak that name aloud.',
+      finalize: 'default',
+      persistentArtifacts: false
     }
   }
 }

@@ -10,12 +10,7 @@ import { langEn } from "./config/lang.en";
 import { langRU } from "./config/lang.ru";
 import type { ILangInterface } from "./config/lang.interface";
 
-import { AvadaKedavra } from './easterEggs/effects/AvadaKedavra';
-import { Hufflepuff } from "./easterEggs/effects/Hufflepuff";
-import { Ravenclaw } from "./easterEggs/effects/Ravenclaw";
-import { Gryffindor } from "./easterEggs/effects/Gryffindor";
-import { Slytherin } from "./easterEggs/effects/Slytherin";
-import { EasterEggRegistry } from './easterEggs/EasterEggRegistry';
+import { registerLore } from './config/lore.hp';
 
 // Все доступные языки
 const languagesMap: Record<string, ILangInterface> = { ru: langRU, en: langEn };
@@ -75,12 +70,7 @@ const canvasPresenter = new CanvasPresenter(
   canvasElement
 );
 
-EasterEggRegistry.register(new AvadaKedavra());
-
-EasterEggRegistry.register(new Hufflepuff());
-EasterEggRegistry.register(new Ravenclaw());
-EasterEggRegistry.register(new Gryffindor());
-EasterEggRegistry.register(new Slytherin());
+registerLore();
 
 // ОФИЦИАЛЬНЫЙ СТАРТ СИСТЕМЫ
 appPresenter.initPersona(diaryModel.config);

@@ -93,47 +93,70 @@ export const langRU: ILangInterface = {
   easterEggs: {
     avada_kedavra: {
       trigger: /авада\s*кедавра/i,
-      response: 'Ты используешь мою же магию против меня? Как опрометчиво. Шалость окончена.'
+      response: 'Ты используешь мою же магию против меня? Как опрометчиво. Шалость окончена.',
+      finalize: 'never-returns',
+      persistentArtifacts: false
     },
     crucio: {
       trigger: /круцио/i,
-      response: 'Ты считаешь себя способным на Круцио? Ты даже не знаешь, что такое настоящая боль.'
+      response: 'Ты считаешь себя способным на Круцио? Ты даже не знаешь, что такое настоящая боль.',
+      finalize: 'default',
+      persistentArtifacts: false
     },
     imperio: {
       trigger: /империо/i,
-      response: 'Вот так-то лучше. Теперь ты понимаешь, кто здесь настоящий хозяин.'
+      response: 'Вот так-то лучше. Теперь ты понимаешь, кто здесь настоящий хозяин.',
+      finalize: 'default',
+      persistentArtifacts: false
     },
     nagini: {
       trigger: /нагайна/i,
-      response: 'Нагайна — моя верная спутница. Ты не достоин её видеть.'
+      response: 'Нагайна — моя верная спутница. Ты не достоин её видеть.',
+      finalize: 'default',
+      persistentArtifacts: false,
+      keepImageAfterFade: true
     },
     hogwarts: {
       trigger: /хогвартс/i,
-      response: 'Хогвартс — мой дом. Нравится ли он тебе?'
+      response: 'Хогвартс — мой дом. Нравится ли он тебе?',
+      finalize: 'default',
+      persistentArtifacts: false
     },
     slytherin: {
       trigger: /слизерин/i,
-      response: 'Слизерин — факультет великих. Ты слышал обо мне?'
+      response: 'Слизерин — факультет великих. Ты слышал обо мне?',
+      finalize: 'default',
+      persistentArtifacts: false
     },
     gryffindor: {
       trigger: /гриффиндор/i,
-      response: 'Гриффиндор? Храбрые, но такие предсказуемые.'
+      response: 'Гриффиндор? Храбрые, но такие предсказуемые.',
+      finalize: 'default',
+      persistentArtifacts: false
     },
     ravenclaw: {
       trigger: /когтевран/i,
-      response: 'Когтевран ценит знания. Но я знаю больше.'
+      response: 'Когтевран ценит знания. Но я знаю больше.',
+      finalize: 'default',
+      persistentArtifacts: false
     },
     hufflepuff: {
       trigger: /пуффендуй/i,
-      response: 'Пуффендуй? Верность — удел слабых.'
+      response: 'Пуффендуй? Верность — удел слабых.',
+      finalize: 'default',
+      persistentArtifacts: false
     },
     open_sesame: {
       trigger: /откройся/i,
-      response: 'Ты хочешь открыть дневник? Он уже открыт. Говори.'
+      response: 'Ты хочешь открыть дневник? Он уже открыт. Говори.',
+      finalize: 'default',
+      persistentArtifacts: false
     },
     voldemort: {
       trigger: /волан\s*де\s*морт/i,
-      response: 'Не смей произносить это имя вслух.'
+      response: 'Не смей произносить это имя вслух.',
+      finalize: 'default',
+      persistentArtifacts: false
     }
   }
 }

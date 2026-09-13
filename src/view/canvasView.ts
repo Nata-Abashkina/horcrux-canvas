@@ -5,7 +5,7 @@ export class CanvasView implements ICanvasView {
 
   constructor(ctx: CanvasRenderingContext2D) {
     this.ctx = ctx;
-    this.ctx.font = "104px 'Special Elite'";
+    this.ctx.font = "104px 'WDXL Lubrifont TC'";
     this.ctx.measureText("");
   }
 
