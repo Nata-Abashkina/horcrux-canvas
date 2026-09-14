@@ -1,4 +1,5 @@
 import type { IInputView } from "../types";
+import { FONT_TOM, FONT_INPUT } from "../config/fonts";
 
 export class InputView implements IInputView {
   // 1. Объявляем приватные свойства — это «карманы», где класс будет хранить инструменты
@@ -27,7 +28,7 @@ export class InputView implements IInputView {
 
   renderUserText(text: string, x: number, y: number, fontSize: number): void {
     // 1. Настраиваем шрифт: объединяем размер в пикселях и системное имя шрифта
-    this.ctx.font = `${fontSize}px 'WDXL Lubrifont TC'`;
+    this.ctx.font = `${fontSize}px '${FONT_INPUT}'`;
      // 2. Задаем цвет букв: блеклые чернила Дневника (антрацитовый цвет)
     this.ctx.fillStyle = '#2b2b2b';
 
@@ -37,7 +38,7 @@ export class InputView implements IInputView {
 
   renderAIResponse(text: string, x: number, y: number, fontSize: number): void {
     // 1. Настраиваем каллиграфический шрифт Тома Реддла
-    this.ctx.font = `${fontSize}px 'Gabriela Script'`;
+    this.ctx.font = `${fontSize}px '${FONT_TOM}'`;
 
     // 2. Задаем цвет: глубокие, свежие чернила Тома
     this.ctx.fillStyle = '#0a1128';

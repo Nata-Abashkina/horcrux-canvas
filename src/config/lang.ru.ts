@@ -111,10 +111,9 @@ export const langRU: ILangInterface = {
     },
     nagini: {
       trigger: /нагайна/i,
-      response: 'Нагайна — моя верная спутница. Ты не достоин её видеть.',
+      response: 'Nagini is my loyal companion. You are not worthy to see her.',
       finalize: 'default',
-      persistentArtifacts: false,
-      keepImageAfterFade: true
+      persistentArtifacts: false
     },
     hogwarts: {
       trigger: /хогвартс/i,
@@ -143,18 +142,6 @@ export const langRU: ILangInterface = {
     hufflepuff: {
       trigger: /пуффендуй/i,
       response: 'Пуффендуй? Верность — удел слабых.',
-      finalize: 'default',
-      persistentArtifacts: false
-    },
-    open_sesame: {
-      trigger: /откройся/i,
-      response: 'Ты хочешь открыть дневник? Он уже открыт. Говори.',
-      finalize: 'default',
-      persistentArtifacts: false
-    },
-    voldemort: {
-      trigger: /волан\s*де\s*морт/i,
-      response: 'Не смей произносить это имя вслух.',
       finalize: 'default',
       persistentArtifacts: false
     }

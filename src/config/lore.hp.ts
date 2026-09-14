@@ -5,7 +5,6 @@ import { Ravenclaw } from '../easterEggs/effects/Ravenclaw';
 import { Gryffindor } from '../easterEggs/effects/Gryffindor';
 import { Slytherin } from '../easterEggs/effects/Slytherin';
 import { Hogwarts } from '../easterEggs/effects/Hogwarts';
-import { OpenSesame } from '../easterEggs/effects/OpenSesame';
 import { Nagini } from '../easterEggs/effects/Nagini';
 
 export const registerLore = (): void => {
@@ -15,6 +14,5 @@ export const registerLore = (): void => {
   EasterEggRegistry.register(new Gryffindor());
   EasterEggRegistry.register(new Slytherin());
   EasterEggRegistry.register(new Hogwarts());
-  EasterEggRegistry.register(new OpenSesame());
   EasterEggRegistry.register(new Nagini());
 };

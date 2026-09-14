@@ -12,5 +12,4 @@ interface IEasterEggConfig {
   response: string;
   finalize: 'default' | 'never-returns';
   persistentArtifacts: boolean;
-  keepImageAfterFade?: boolean;   // необязательное, по умолчанию false
 }

@@ -105,8 +105,7 @@ export const langEn: ILangInterface = {
       trigger: /nagini/i,
       response: 'Nagini is my loyal companion. You are not worthy to see her.',
       finalize: 'default',
-      persistentArtifacts: false,
-      keepImageAfterFade: true
+      persistentArtifacts: false
     },
     hogwarts: {
       trigger: /hogwarts/i,
@@ -135,18 +134,6 @@ export const langEn: ILangInterface = {
     hufflepuff: {
       trigger: /hufflepuff/i,
       response: 'Hufflepuff? Loyalty is for the weak.',
-      finalize: 'default',
-      persistentArtifacts: false
-    },
-    open_sesame: {
-      trigger: /open/i,
-      response: 'You wish to open the diary? It is already open. Speak.',
-      finalize: 'default',
-      persistentArtifacts: false
-    },
-    voldemort: {
-      trigger: /voldemort/i,
-      response: 'Do not dare speak that name aloud.',
       finalize: 'default',
       persistentArtifacts: false
     }

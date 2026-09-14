@@ -1,11 +1,12 @@
 import type { ICanvasView, IPixelPoint } from "../types";
+import { FONT_INPUT } from "../config/fonts";
 
 export class CanvasView implements ICanvasView {
   private ctx: CanvasRenderingContext2D;
 
   constructor(ctx: CanvasRenderingContext2D) {
     this.ctx = ctx;
-    this.ctx.font = "104px 'WDXL Lubrifont TC'";
+    this.ctx.font = `104px '${FONT_INPUT}'`;
     this.ctx.measureText("");
   }
 

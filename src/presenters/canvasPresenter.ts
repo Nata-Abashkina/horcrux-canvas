@@ -1,5 +1,6 @@
 import type { ICanvasPresenter, ICanvasView, IDiaryModel, IOCRService, IStrokeService, IPixelPoint } from "../types";
 import { EasterEggRegistry } from '../easterEggs/EasterEggRegistry';
+import { FONT_INPUT, FONT_TOM } from "../config/fonts";
 
 interface IChronologicalChar {
   char: string;
@@ -261,7 +262,7 @@ export class CanvasPresenter implements ICanvasPresenter {
     const maxWidth = this.currentWidth - startX * 2;
     
     ctx.save();
-    ctx.font = `${fontSize}px Gabriela`;
+    ctx.font = `${fontSize}px '${FONT_TOM}'`;
     ctx.fillStyle = "#1a1a3a";
     ctx.globalAlpha = alpha;
     
@@ -378,7 +379,7 @@ export class CanvasPresenter implements ICanvasPresenter {
       }
 
       const fontSize = this.getResponsiveFontSize(80);
-      this.view.drawTextChar(e.key, this.caretX, this.caretY, `${fontSize}px 'WDXL Lubrifont TC'`);
+      this.view.drawTextChar(e.key, this.caretX, this.caretY, `${fontSize}px '${FONT_INPUT}'`);
 
       this.typedChars.push({
         char: e.key,
@@ -554,7 +555,7 @@ export class CanvasPresenter implements ICanvasPresenter {
 
       ctx.save();
       this.view.setAlpha(opacity);
-      this.view.drawTextChar(tc.char, tc.x, tc.y, `${fontSize}px 'WDXL Lubrifont TC'`);
+      this.view.drawTextChar(tc.char, tc.x, tc.y, `${fontSize}px '${FONT_INPUT}'`);
       ctx.restore();
     }
   }
