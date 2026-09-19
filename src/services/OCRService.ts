@@ -31,12 +31,23 @@ export class OCRService implements IOCRService {
       console.log('7. Recognize завершен');
       console.log('8. Результат (raw):', JSON.stringify(result.data.text));
       console.log('9. Длина:', result.data.text.length);
-      console.log('10. После trim:', JSON.stringify(result.data.text.trim()));
 
-      return result.data.text.trim();
+      const rawText = result.data.text.trim();
+      const confidence = result.data.confidence;
+
+      console.log('10. После trim:', JSON.stringify(rawText));
+      console.log('11. Confidence:', confidence);
+
+      // Если уверенность низкая — считаем, что OCR не распознал
+      if (confidence < 60) {
+        console.log('12. Низкая уверенность — возвращаем пусто');
+        return '';
+      }
+
+      return rawText;
 
     } catch (error) {
-      console.error('11. ОШИБКА:', error);
+      console.error('13. ОШИБКА:', error);
       return '';
     }
   }
