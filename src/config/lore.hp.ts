@@ -6,6 +6,7 @@ import { Gryffindor } from '../easterEggs/effects/Gryffindor';
 import { Slytherin } from '../easterEggs/effects/Slytherin';
 import { Hogwarts } from '../easterEggs/effects/Hogwarts';
 import { Nagini } from '../easterEggs/effects/Nagini';
+import { Imperio } from '../easterEggs/effects/Imperio';
 
 export const registerLore = (): void => {
   EasterEggRegistry.register(new AvadaKedavra());
@@ -15,4 +16,5 @@ export const registerLore = (): void => {
   EasterEggRegistry.register(new Slytherin());
   EasterEggRegistry.register(new Hogwarts());
   EasterEggRegistry.register(new Nagini());
+  EasterEggRegistry.register(new Imperio());
 };

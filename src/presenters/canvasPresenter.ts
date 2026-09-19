@@ -66,6 +66,14 @@ export class CanvasPresenter implements ICanvasPresenter {
 
         if (egg && eggConfig) {
           const ctx = (this.view as ICanvasViewWithContext).ctx;
+
+          if (egg.awaitsSecondInput) {
+            // Пасхалка ждёт второй ввод — НЕ блокируем канвас, даём пользователю писать
+            EasterEggRegistry.beginAwait(egg, eggConfig.response, eggConfig.overlayText ?? '');
+            this.diaryModel.isLocked = false;
+            return;
+          }
+
           await egg.execute(ctx, this.currentWidth, this.currentHeight, eggConfig.response);
 
           if (eggConfig.finalize !== 'never-returns') {
@@ -341,7 +349,7 @@ export class CanvasPresenter implements ICanvasPresenter {
     this.renderLiveBezierSegment(points);
   }
 
-  private handlePointerUp(e: PointerEvent): void {
+  private handlePointerUp(_e: PointerEvent): void {
     if (!this.isDrawing) {
       return;
     }
@@ -351,6 +359,19 @@ export class CanvasPresenter implements ICanvasPresenter {
     }
 
     this.ocrTimeoutId = window.setTimeout(() => {
+      if (EasterEggRegistry.isAwaitingInput()) {
+        this.isDrawing = false;
+        this.diaryModel.isLocked = true;
+        const ctx = (this.view as ICanvasViewWithContext).ctx;
+        EasterEggRegistry.notifyInputComplete(ctx, this.currentWidth, this.currentHeight, {
+          typedChars: this.typedChars.map(c => ({ char: c.char, x: c.x, y: c.y })),
+          strokePoints: this.strokeService.getPoints().map(p => ({ x: p.x, y: p.y, isNew: p.isNew })),
+        }).then(() => {
+          this.diaryModel.isLocked = false;
+          this.finalizeSession();
+        });
+        return;
+      }
       this.isDrawing = false;
       this.executeAbsorptionLoop();
     }, 1200);
@@ -396,6 +417,19 @@ export class CanvasPresenter implements ICanvasPresenter {
       }
 
       this.ocrTimeoutId = window.setTimeout(() => {
+        if (EasterEggRegistry.isAwaitingInput()) {
+          this.isTyping = false;
+          this.diaryModel.isLocked = true;
+          const ctx = (this.view as ICanvasViewWithContext).ctx;
+          EasterEggRegistry.notifyInputComplete(ctx, this.currentWidth, this.currentHeight, {
+            typedChars: this.typedChars.map(c => ({ char: c.char, x: c.x, y: c.y })),
+            strokePoints: this.strokeService.getPoints().map(p => ({ x: p.x, y: p.y, isNew: p.isNew })),
+          }).then(() => {
+            this.diaryModel.isLocked = false;
+            this.finalizeSession();
+          });
+          return;
+        }
         this.isTyping = false;
         this.executeAbsorptionLoop();
       }, 1200);

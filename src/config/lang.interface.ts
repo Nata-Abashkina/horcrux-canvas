@@ -12,4 +12,5 @@ interface IEasterEggConfig {
   response: string;
   finalize: 'default' | 'never-returns';
   persistentArtifacts: boolean;
+  overlayText?: string;
 }

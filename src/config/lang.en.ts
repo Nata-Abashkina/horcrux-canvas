@@ -98,6 +98,7 @@ export const langEn: ILangInterface = {
     imperio: {
       trigger: /imperio/i,
       response: 'Much better. Now you understand who is truly in control.',
+      overlayText: 'I WILL ALWAYS OBEY YOU, TOM!',
       finalize: 'default',
       persistentArtifacts: false
     },

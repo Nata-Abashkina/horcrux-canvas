@@ -106,6 +106,7 @@ export const langRU: ILangInterface = {
     imperio: {
       trigger: /империо/i,
       response: 'Вот так-то лучше. Теперь ты понимаешь, кто здесь настоящий хозяин.',
+      overlayText: 'Я ВСЕГДА БУДУ ПОДЧИНЯТЬСЯ ТЕБЕ, ТОМ!',
       finalize: 'default',
       persistentArtifacts: false
     },

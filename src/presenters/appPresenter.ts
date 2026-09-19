@@ -12,7 +12,6 @@ export class AppPresenter {
   private readonly inputView: IInputView;
 
   private readonly chatHistory: IChatMessage[] = [];
-  private lastLocale: string = '';
   private isProcessingEvent: boolean = false;
 
   constructor(
@@ -23,8 +22,6 @@ export class AppPresenter {
     this.diaryModel = diaryModel;
     this.guardrailsService = guardrailsService;
     this.inputView = inputView;
-
-    this.lastLocale = this.diaryModel.config.locale;
 
     this.diaryModel.onDataChanged = () => {
       if (this.isProcessingEvent) {
@@ -39,15 +36,15 @@ export class AppPresenter {
     };
   }
 
-public bindEvents(buttonElement: HTMLButtonElement): void {
-  buttonElement.setAttribute('type', 'button');
-  
-  buttonElement.addEventListener('click', (e) => {
-    e.preventDefault();
-    buttonElement.blur();
-    this.handleLanguageToggle();
-  });
-}
+  public bindEvents(buttonElement: HTMLButtonElement): void {
+    buttonElement.setAttribute('type', 'button');
+
+    buttonElement.addEventListener('click', (e) => {
+      e.preventDefault();
+      buttonElement.blur();
+      this.handleLanguageToggle();
+    });
+  }
 
   public initPersona(config: ILangInterface): void {
     this.chatHistory.length = 0;
@@ -89,14 +86,13 @@ public bindEvents(buttonElement: HTMLButtonElement): void {
     }
 
     this.diaryModel.config = nextConfig;
-    this.lastLocale = nextConfig.locale;
     this.initPersona(nextConfig);
     this.inputView.updateLangButton(nextConfig.locale.toUpperCase());
   }
 
   private async handleModelUpdate(): Promise<void> {
     this.isProcessingEvent = true;
-  
+
     try {
       const config = this.diaryModel.config;
       const recognizedText = this.diaryModel.text;
@@ -105,7 +101,7 @@ public bindEvents(buttonElement: HTMLButtonElement): void {
         this.initPersona(config);
       }
 
-    // ПРОВЕРКА ПАСХАЛОК ПЕРВОЙ
+      // ПРОВЕРКА ПАСХАЛОК ПЕРВОЙ
       const eggType = this.findEasterEgg(recognizedText, config);
 
       if (eggType) {
@@ -115,7 +111,7 @@ public bindEvents(buttonElement: HTMLButtonElement): void {
         return;
       }
 
-    // Затем guardrails
+      // Затем guardrails
       let finalResponse = '';
       const guardrailsResult = this.guardrailsService.validate(recognizedText, config);
 
@@ -145,19 +141,18 @@ public bindEvents(buttonElement: HTMLButtonElement): void {
 
   private findEasterEgg(text: string, config: ILangInterface): string | null {
     const normalized = text.toLowerCase().replace(/\s+/g, '');
-  
+
     for (const [type, egg] of Object.entries(config.easterEggs)) {
       if (egg.trigger.test(normalized)) {
         return type;
       }
     }
-  
+
     return null;
   }
 
   private async fetchAIResponse(): Promise<string> {
     await new Promise((resolve) => setTimeout(resolve, 1000));
-    const lastUserMessage = this.chatHistory[this.chatHistory.length - 1]?.content || '';
-    return `Я слышу тебя. Ты написал: "${lastUserMessage}". Но готов ли ты зайти дальше?`;
+    return 'Hello, Harry Potter. My name is Tom.';
   }
 }
