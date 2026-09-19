@@ -134,6 +134,8 @@ export class AppPresenter {
 
     } catch (error) {
       console.error('Ошибка в handleModelUpdate:', error);
+      this.diaryModel.isLocked = false;   // ← фикс: разблокируем канвас при падении
+      this.diaryModel.isLoading = false;
     } finally {
       this.isProcessingEvent = false;
     }

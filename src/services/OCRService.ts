@@ -9,35 +9,34 @@ export class OCRService implements IOCRService {
   async recognize(canvasElement: HTMLCanvasElement, langCode: string): Promise<string> {
     console.log('1. OCRService.recognize вызван');
     console.log('2. Язык:', langCode);
-    
+
     try {
-      // Если worker существует и язык тот же - используем его
       if (this.worker && this.currentLang === langCode) {
         console.log('3. Используем существующий worker');
       } else {
-        // Если worker существует, но язык другой - уничтожаем
         if (this.worker) {
           console.log('3. Уничтожаем старый worker');
           await this.worker.terminate();
           this.worker = null;
         }
-        
-        // Создаем новый worker
+
         console.log('4. Создаем новый worker');
         this.currentLang = langCode;
         this.worker = await createWorker(langCode);
         console.log('5. Worker создан');
       }
-      
+
       console.log('6. Запускаем recognize');
       const result = await this.worker.recognize(canvasElement);
       console.log('7. Recognize завершен');
-      console.log('8. Результат:', result.data.text);
-      
+      console.log('8. Результат (raw):', JSON.stringify(result.data.text));
+      console.log('9. Длина:', result.data.text.length);
+      console.log('10. После trim:', JSON.stringify(result.data.text.trim()));
+
       return result.data.text.trim();
-      
+
     } catch (error) {
-      console.error('9. ОШИБКА:', error);
+      console.error('11. ОШИБКА:', error);
       return '';
     }
   }
@@ -50,33 +49,3 @@ export class OCRService implements IOCRService {
     }
   }
 }
-
-
-
-
-
-
-
-/*import { createWorker, type Worker } from 'tesseract.js';
-import type { IOCRService } from '../types';
-
-export class OCRService implements IOCRService {
-  private worker: Worker | null = null;
-
-async recognize(canvasElement: HTMLCanvasElement, langCode: string): Promise<string> {
-  if (!this.worker) {
-    // Первым аргументом передаем язык, вторым OEM-движок (1 = LSTM), третьим — локальные пути
-    this.worker = await createWorker(langCode, 1, {
-      langPath: window.location.origin + '/assets/tessdata/', // Тянем модель из ваших локальных ассетов
-      gzip: false // Кастомные .traineddata лежат без сжатия, отключаем поиск .gz архивов
-    });
-  }
-
-  const result = await this.worker.recognize(canvasElement);
-  const rawText = result.data.text;
-  
-  return rawText.trim();
-}
-
-
-}*/
