@@ -98,63 +98,68 @@ export class CanvasPresenter implements ICanvasPresenter {
   }
 
   init(): void {
-    this.currentWidth = window.innerWidth;
-    this.currentHeight = window.innerHeight;
-    const dpr = window.devicePixelRatio || 1;
-    this.view.setDimensions(this.currentWidth, this.currentHeight, dpr);
+  this.currentWidth = window.innerWidth;
+  this.currentHeight = window.innerHeight;
+  const dpr = window.devicePixelRatio || 1;
+  this.view.setDimensions(this.currentWidth, this.currentHeight, dpr);
 
-    this.canvas.addEventListener("pointerdown", (e: PointerEvent) => {
-      if (this.diaryModel.isLocked) {
-        e.preventDefault();
-        e.stopPropagation();
-        return;
-      }
-      this.handlePointerDown(e);
-    });
+  this.canvas.addEventListener("pointerdown", (e: PointerEvent) => {
+    e.preventDefault();
+    if (this.diaryModel.isLocked) {
+      e.stopPropagation();
+      return;
+    }
+    this.handlePointerDown(e);
+  }, { passive: false });
 
-    this.canvas.addEventListener("pointermove", (e: PointerEvent) => {
-      if (this.diaryModel.isLocked) {
-        e.preventDefault();
-        e.stopPropagation();
-        return;
-      }
-      this.handlePointerMove(e);
-    });
+  this.canvas.addEventListener("pointermove", (e: PointerEvent) => {
+    e.preventDefault();
+    if (this.diaryModel.isLocked) {
+      e.stopPropagation();
+      return;
+    }
+    this.handlePointerMove(e);
+  }, { passive: false });
 
-    this.canvas.addEventListener("pointerup", (e: PointerEvent) => {
-      if (this.diaryModel.isLocked) {
-        e.preventDefault();
-        e.stopPropagation();
-        return;
-      }
-      this.handlePointerUp(e);
-    });
+  this.canvas.addEventListener("pointerup", (e: PointerEvent) => {
+    e.preventDefault();
+    if (this.diaryModel.isLocked) {
+      e.stopPropagation();
+      return;
+    }
+    this.handlePointerUp(e);
+  }, { passive: false });
 
-    window.addEventListener("keydown", (e: KeyboardEvent) => {
-      if (this.diaryModel.isLocked) {
-        e.preventDefault();
-        e.stopPropagation();
-        return;
-      }
-      this.handleDesktopInput(e);
-    }, true);
+  this.canvas.addEventListener("pointercancel", (e: PointerEvent) => {
+    e.preventDefault();
+    this.handlePointerUp(e);
+  }, { passive: false });
 
-    document.addEventListener("keydown", (e: KeyboardEvent) => {
-      if (this.diaryModel.isLocked) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-    }, true);
+  window.addEventListener("keydown", (e: KeyboardEvent) => {
+    if (this.diaryModel.isLocked) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    this.handleDesktopInput(e);
+  }, true);
 
-    document.addEventListener("pointerdown", (e: PointerEvent) => {
-      if (this.diaryModel.isLocked) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-    }, true);
+  document.addEventListener("keydown", (e: KeyboardEvent) => {
+    if (this.diaryModel.isLocked) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }, true);
 
-    window.addEventListener("resize", () => this.handleResize());
-  }
+  document.addEventListener("pointerdown", (e: PointerEvent) => {
+    if (this.diaryModel.isLocked) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }, true);
+
+  window.addEventListener("resize", () => this.handleResize());
+}
 
   private getResponsiveFontSize(baseSize: number): number {
     const minScreen = 320;
