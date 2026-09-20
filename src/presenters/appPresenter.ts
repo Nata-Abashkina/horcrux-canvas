@@ -1,5 +1,6 @@
 import type { IDiaryModel, IInputView, IGuardrailsService } from '../types';
 import type { ILangInterface } from '../config/lang.interface';
+import { normalizeToRu, normalizeToEn } from '../config/normalize';
 
 interface IChatMessage {
   readonly role: 'system' | 'user' | 'assistant';
@@ -134,7 +135,7 @@ export class AppPresenter {
 
     } catch (error) {
       console.error('Ошибка в handleModelUpdate:', error);
-      this.diaryModel.isLocked = false;   // ← фикс: разблокируем канвас при падении
+      this.diaryModel.isLocked = false;
       this.diaryModel.isLoading = false;
     } finally {
       this.isProcessingEvent = false;
@@ -142,10 +143,19 @@ export class AppPresenter {
   }
 
   private findEasterEgg(text: string, config: ILangInterface): string | null {
-    const normalized = text.toLowerCase().replace(/\s+/g, '');
+    const compact = text.toLowerCase().replace(/\s+/g, '');
+
+    // Нормализуем под локаль: латинские двойники → русские (или наоборот)
+    const normalized = config.locale === 'ru'
+      ? normalizeToRu(compact)
+      : normalizeToEn(compact);
+
+    console.log('[findEasterEgg] ввод:', JSON.stringify(compact));
+    console.log('[findEasterEgg] после нормализации:', JSON.stringify(normalized));
 
     for (const [type, egg] of Object.entries(config.easterEggs)) {
       if (egg.trigger.test(normalized)) {
+        console.log('[findEasterEgg] совпало:', type);
         return type;
       }
     }

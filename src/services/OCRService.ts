@@ -7,47 +7,35 @@ export class OCRService implements IOCRService {
   private currentLang: string | null = null;
 
   async recognize(canvasElement: HTMLCanvasElement, langCode: string): Promise<string> {
-    console.log('1. OCRService.recognize вызван');
-    console.log('2. Язык:', langCode);
+    console.log('[OCR] recognize вызван, язык:', langCode);
 
     try {
       if (this.worker && this.currentLang === langCode) {
-        console.log('3. Используем существующий worker');
+        console.log('[OCR] используем существующий worker');
       } else {
         if (this.worker) {
-          console.log('3. Уничтожаем старый worker');
           await this.worker.terminate();
           this.worker = null;
         }
-
-        console.log('4. Создаем новый worker');
         this.currentLang = langCode;
+        console.log('[OCR] создаём worker');
         this.worker = await createWorker(langCode);
-        console.log('5. Worker создан');
+        console.log('[OCR] worker создан');
       }
 
-      console.log('6. Запускаем recognize');
+      console.log('[OCR] запускаем recognize');
       const result = await this.worker.recognize(canvasElement);
-      console.log('7. Recognize завершен');
-      console.log('8. Результат (raw):', JSON.stringify(result.data.text));
-      console.log('9. Длина:', result.data.text.length);
-
       const rawText = result.data.text.trim();
       const confidence = result.data.confidence;
 
-      console.log('10. После trim:', JSON.stringify(rawText));
-      console.log('11. Confidence:', confidence);
+      console.log('[OCR] raw:', JSON.stringify(rawText));
+      console.log('[OCR] confidence:', confidence);
 
-      // Если уверенность низкая — считаем, что OCR не распознал
-      if (confidence < 60) {
-        console.log('12. Низкая уверенность — возвращаем пусто');
-        return '';
-      }
-
+      // Никаких фильтров. Отдаём как есть.
       return rawText;
 
     } catch (error) {
-      console.error('13. ОШИБКА:', error);
+      console.error('[OCR] ОШИБКА:', error);
       return '';
     }
   }

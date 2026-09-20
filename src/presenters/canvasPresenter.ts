@@ -37,6 +37,8 @@ export class CanvasPresenter implements ICanvasPresenter {
   private aiResponseTimeoutId: number | null = null;
   private aiResponseShown: boolean = false;
 
+  private crucioLayer: HTMLCanvasElement | null = null;
+
   constructor(
     view: ICanvasView, 
     strokeService: IStrokeService, 
@@ -74,6 +76,10 @@ export class CanvasPresenter implements ICanvasPresenter {
           }
 
           await egg.execute(ctx, this.currentWidth, this.currentHeight, eggConfig.response);
+
+          if (eggType === 'crucio') {
+            this.captureCrucioLayer();
+          }
 
           if (eggConfig.finalize !== 'never-returns') {
             this.diaryModel.isLocked = false;
@@ -173,6 +179,15 @@ export class CanvasPresenter implements ICanvasPresenter {
     const ratio = (this.currentWidth - minScreen) / (maxScreen - minScreen);
     const clampedRatio = Math.max(0, Math.min(1, ratio));
     return baseSpacing * (0.5 + 0.5 * clampedRatio);
+  }
+
+  private captureCrucioLayer(): void {
+    const snap = document.createElement('canvas');
+    snap.width = this.canvas.width;
+    snap.height = this.canvas.height;
+    const sctx = snap.getContext('2d');
+    if (sctx) sctx.drawImage(this.canvas, 0, 0);
+    this.crucioLayer = snap;
   }
 
   private animateAIResponseIn(text: string): void {
@@ -472,8 +487,39 @@ export class CanvasPresenter implements ICanvasPresenter {
     ocrBuffer.width = this.currentWidth * dpr;
     ocrBuffer.height = this.currentHeight * dpr;
     const ocrCtx = ocrBuffer.getContext("2d");
+
+    // ВАЖНО: рисуем в OCR-буфер ТОЛЬКО пользовательский ввод.
+    // Если есть crucioLayer — трещины туда НЕ попадают.
     if (ocrCtx) {
-      ocrCtx.drawImage(this.canvas, 0, 0);
+      ocrCtx.scale(dpr, dpr);
+
+      // Восстанавливаем состояние пера как во view
+      ocrCtx.strokeStyle = "#2b2b2b";
+      ocrCtx.lineWidth = 2;
+      ocrCtx.lineCap = "round";
+      ocrCtx.lineJoin = "round";
+
+      // Штрихи пальцем
+      const allPoints = this.strokeService.getPoints();
+      if (allPoints.length > 0) {
+        ocrCtx.beginPath();
+        for (let i = 0; i < allPoints.length; i++) {
+          const p = allPoints[i];
+          const px = p.x * this.currentWidth;
+          const py = p.y * this.currentHeight;
+          if (p.isNew) ocrCtx.moveTo(px, py);
+          else ocrCtx.lineTo(px, py);
+        }
+        ocrCtx.stroke();
+      }
+
+      // Буквы с клавиатуры
+      const fontSize = this.getResponsiveFontSize(80);
+      ocrCtx.font = `${fontSize}px '${FONT_INPUT}'`;
+      ocrCtx.fillStyle = "#2b2b2b";
+      for (const tc of this.typedChars) {
+        ocrCtx.fillText(tc.char, tc.x, tc.y);
+      }
     }
 
     const points = this.strokeService.getPoints();
@@ -494,6 +540,13 @@ export class CanvasPresenter implements ICanvasPresenter {
       const ctx = viewWithContext.ctx;
       
       if (ctx) {
+        // Фон — трещины, если они есть
+        if (this.crucioLayer) {
+          ctx.save();
+          ctx.drawImage(this.crucioLayer, 0, 0, this.currentWidth, this.currentHeight);
+          ctx.restore();
+        }
+
         this.drawFadingStrokes(ctx, points, globalProgress, totalInputDuration);
         this.drawFadingText(ctx, globalProgress, totalInputDuration);
       }
@@ -502,6 +555,16 @@ export class CanvasPresenter implements ICanvasPresenter {
         this.animationFrameId = requestAnimationFrame(tick);
       } else {
         this.view.clear(this.currentWidth, this.currentHeight);
+
+        // Финальный кадр — трещины остаются на холсте
+        if (this.crucioLayer) {
+          const viewWithContext2 = this.view as ICanvasViewWithContext;
+          const ctx2 = viewWithContext2.ctx;
+          if (ctx2) {
+            ctx2.drawImage(this.crucioLayer, 0, 0, this.currentWidth, this.currentHeight);
+          }
+        }
+
         this.view.resetFilters();
         this.animationFrameId = null;
         this.triggerOCRService(ocrBuffer);
@@ -608,7 +671,6 @@ export class CanvasPresenter implements ICanvasPresenter {
         if (recognizedText && recognizedText.trim().length > 0) {
           this.diaryModel.text = recognizedText;
         } else {
-          // OCR не распознал — снимаем блокировку, иначе канвас мёртв
           this.diaryModel.isLocked = false;
         }
       })
@@ -637,6 +699,13 @@ export class CanvasPresenter implements ICanvasPresenter {
     this.currentHeight = window.innerHeight;
     const dpr = window.devicePixelRatio || 1;
     this.view.setDimensions(this.currentWidth, this.currentHeight, dpr);
+
+    if (this.crucioLayer) {
+      const viewWithContext = this.view as ICanvasViewWithContext;
+      if (viewWithContext.ctx) {
+        viewWithContext.ctx.drawImage(this.crucioLayer, 0, 0, this.currentWidth, this.currentHeight);
+      }
+    }
   }
     
   public clearCanvas(): void {

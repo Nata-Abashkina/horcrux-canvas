@@ -101,7 +101,7 @@ export const langRU: ILangInterface = {
       trigger: /круцио/i,
       response: 'Ты считаешь себя способным на Круцио? Ты даже не знаешь, что такое настоящая боль.',
       finalize: 'default',
-      persistentArtifacts: false
+      persistentArtifacts: true
     },
     imperio: {
       trigger: /империо/i,

@@ -84,7 +84,7 @@ export const langEn: ILangInterface = {
   },
   easterEggs: {
     avada_kedavra: {
-      trigger: /avadakedavra|avada\s*kedavra/i,
+      trigger: /avada\s*kedavra/i,
       response: 'You dare use my own magic against me? How foolish. Mischief managed permanently.',
       finalize: 'never-returns',
       persistentArtifacts: false
@@ -93,7 +93,7 @@ export const langEn: ILangInterface = {
       trigger: /crucio/i,
       response: 'You think you can handle Crucio? You do not know true pain.',
       finalize: 'default',
-      persistentArtifacts: false
+      persistentArtifacts: true
     },
     imperio: {
       trigger: /imperio/i,
