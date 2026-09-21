@@ -1,33 +1,28 @@
-import type { IDiaryModel, IInputView, IGuardrailsService } from '../types';
+import type { IDiaryModel, IInputView, IGuardrailsService, IAIClientService } from '../types';
 import type { ILangInterface } from '../config/lang.interface';
 import { normalizeToRu, normalizeToEn } from '../config/normalize';
-
-interface IChatMessage {
-  readonly role: 'system' | 'user' | 'assistant';
-  readonly content: string;
-}
 
 export class AppPresenter {
   private readonly diaryModel: IDiaryModel;
   private readonly guardrailsService: IGuardrailsService;
   private readonly inputView: IInputView;
+  private readonly aiClient: IAIClientService;
 
-  private readonly chatHistory: IChatMessage[] = [];
   private isProcessingEvent: boolean = false;
 
   constructor(
     diaryModel: IDiaryModel,
     guardrailsService: IGuardrailsService,
-    inputView: IInputView
+    inputView: IInputView,
+    aiClient: IAIClientService
   ) {
     this.diaryModel = diaryModel;
     this.guardrailsService = guardrailsService;
     this.inputView = inputView;
+    this.aiClient = aiClient;
 
     this.diaryModel.onDataChanged = () => {
-      if (this.isProcessingEvent) {
-        return;
-      }
+      if (this.isProcessingEvent) return;
 
       if (this.diaryModel.text.trim().length > 0 && this.diaryModel.isLocked) {
         this.handleModelUpdate().catch((error) => {
@@ -39,7 +34,6 @@ export class AppPresenter {
 
   public bindEvents(buttonElement: HTMLButtonElement): void {
     buttonElement.setAttribute('type', 'button');
-
     buttonElement.addEventListener('click', (e) => {
       e.preventDefault();
       buttonElement.blur();
@@ -47,47 +41,22 @@ export class AppPresenter {
     });
   }
 
-  public initPersona(config: ILangInterface): void {
-    this.chatHistory.length = 0;
-    this.chatHistory.push({
-      role: 'system',
-      content: config.persona.systemPrompt
-    });
-  }
-
-  private pushToHistory(role: 'user' | 'assistant', content: string): void {
-    this.chatHistory.push({ role, content });
-
-    if (this.chatHistory.length > 11) {
-      this.chatHistory.splice(1, 1);
-    }
-  }
-
   private handleLanguageToggle(): void {
-    if (this.diaryModel.isLoading) {
-      return;
-    }
+    if (this.diaryModel.isLoading) return;
 
     const currentConfig = this.diaryModel.config;
-    const currentLocale = currentConfig.locale;
     const allLanguages = this.diaryModel.languages;
     const locales = Object.keys(allLanguages);
+    if (locales.length <= 1) return;
 
-    if (locales.length <= 1) {
-      return;
-    }
-
-    const currentIndex = locales.indexOf(currentLocale);
+    const currentIndex = locales.indexOf(currentConfig.locale);
     const nextIndex = (currentIndex + 1) % locales.length;
     const nextLocale = locales[nextIndex];
     const nextConfig = allLanguages[nextLocale];
-
-    if (!nextConfig) {
-      return;
-    }
+    if (!nextConfig) return;
 
     this.diaryModel.config = nextConfig;
-    this.initPersona(nextConfig);
+    this.aiClient.setLanguage(nextConfig);
     this.inputView.updateLangButton(nextConfig.locale.toUpperCase());
   }
 
@@ -98,30 +67,28 @@ export class AppPresenter {
       const config = this.diaryModel.config;
       const recognizedText = this.diaryModel.text;
 
-      if (this.chatHistory.length === 0) {
-        this.initPersona(config);
-      }
-
-      // ПРОВЕРКА ПАСХАЛОК ПЕРВОЙ
       const eggType = this.findEasterEgg(recognizedText, config);
-
       if (eggType) {
         this.diaryModel.text = '';
+        this.diaryModel.pendingImage = null;
         this.diaryModel.easterEgg = eggType;
         this.diaryModel.isLoading = false;
         return;
       }
 
-      // Затем guardrails
       let finalResponse = '';
       const guardrailsResult = this.guardrailsService.validate(recognizedText, config);
 
       if (guardrailsResult.status !== 'PASSED') {
         finalResponse = guardrailsResult.responseText || '';
+        this.diaryModel.pendingImage = null;
       } else {
-        this.pushToHistory('user', guardrailsResult.cleanedText);
-        finalResponse = await this.fetchAIResponse();
-        this.pushToHistory('assistant', finalResponse);
+        const image = this.diaryModel.pendingImage ?? undefined;
+        this.diaryModel.pendingImage = null;
+        finalResponse = await this.aiClient.sendMessage(
+          guardrailsResult.cleanedText,
+          image
+        );
       }
 
       this.diaryModel.text = '';
@@ -130,9 +97,7 @@ export class AppPresenter {
         timestamp: Date.now(),
         isVisible: true
       };
-
       this.diaryModel.isLoading = false;
-
     } catch (error) {
       console.error('Ошибка в handleModelUpdate:', error);
       this.diaryModel.isLocked = false;
@@ -144,27 +109,15 @@ export class AppPresenter {
 
   private findEasterEgg(text: string, config: ILangInterface): string | null {
     const compact = text.toLowerCase().replace(/\s+/g, '');
+    if (compact.length === 0) return null;
 
-    // Нормализуем под локаль: латинские двойники → русские (или наоборот)
     const normalized = config.locale === 'ru'
       ? normalizeToRu(compact)
       : normalizeToEn(compact);
 
-    console.log('[findEasterEgg] ввод:', JSON.stringify(compact));
-    console.log('[findEasterEgg] после нормализации:', JSON.stringify(normalized));
-
     for (const [type, egg] of Object.entries(config.easterEggs)) {
-      if (egg.trigger.test(normalized)) {
-        console.log('[findEasterEgg] совпало:', type);
-        return type;
-      }
+      if (egg.trigger.test(normalized)) return type;
     }
-
     return null;
-  }
-
-  private async fetchAIResponse(): Promise<string> {
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    return 'Hello, Harry Potter. My name is Tom.';
   }
 }

@@ -49,6 +49,7 @@ export interface IDiaryModel {
   aiResponse: IAIResponse | null;
   languages: Record<string, ILangInterface>;
   onDataChanged: (() => void) | null;
+  pendingImage: string | null;
 }
 
 export interface IOCRService {
@@ -71,4 +72,9 @@ export interface IGuardrailsResult {
 
 export interface IGuardrailsService {
   validate(rawInput: string, config: ILangInterface): IGuardrailsResult;
+}
+
+export interface IAIClientService {
+  sendMessage(prompt: string, imageBase64?: string): Promise<string>;
+  setLanguage(config: ILangInterface): void;
 }
