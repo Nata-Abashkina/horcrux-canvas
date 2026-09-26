@@ -1,50 +1,47 @@
+// src/services/guardrails.ts
 import type { ILangInterface } from "../config/lang.interface";
 import type { IGuardrailsService, IGuardrailsResult } from "../types.ts";
 
 export class GuardrailsService implements IGuardrailsService {
-  
+
   private normalizeString(input: string): string {
-    let text = input.toLowerCase();
-    let cleanText = text.replace(/[.,\/\\_|\s()-[\]]/g, "");
+    const text = input.toLowerCase();
+    const cleanText = text.replace(/[.,\/\\_|\s()-[\]]/g, "");
 
     return cleanText;
   }
 
-  private checkAbuse(text: string, patterns: RegExp[]) {
-    for (let pattern of patterns) {
+  private checkAbuse(text: string, patterns: RegExp[]): boolean {
+    for (const pattern of patterns) {
       if (pattern.test(text)) {
         return true;
-      };
+      }
     }
 
     return false;
   }
 
-  private checkSpamIdentical(text: string, limit: number) {
-    let rule = new RegExp("(.)\\1{" + limit + "}", "i");
+  private checkSpamIdentical(text: string, limit: number): boolean {
+    const rule = new RegExp("(.)\\1{" + limit + "}", "i");
     return rule.test(text);
   }
 
-  private getRandomResponse(responses: string[]) {
-    let response = Math.floor(Math.random() * responses.length);
-    return responses[response];
+  private getRandomResponse(responses: string[]): string {
+    const index = Math.floor(Math.random() * responses.length);
+    return responses[index];
   }
 
-  private checkSpamConsonants(text: string, limit: number, locale: string) {
-    // 1. Создаем карту-словарь согласных букв
+  private checkSpamConsonants(text: string, limit: number, locale: string): boolean {
     const consonantsMap: Record<string, string> = {
       ru: 'бвгджзклмнпрстфхцчшщ',
       en: 'b-df-hj-np-tv-z'
     };
 
-    // 2. Достаем буквы для текущего языка
     const letters = consonantsMap[locale];
 
-    // 3. Если языка нет в словаре (например, китайский), просто пропускаем проверку спама
     if (!letters) return false;
 
-    // 4. Динамически собираем регулярное выражение
-    let rule = new RegExp("[" + letters + "]{" + (limit + 1) + "}", 'i');
+    const rule = new RegExp("[" + letters + "]{" + (limit + 1) + "}", 'i');
     return rule.test(text);
   }
 
@@ -57,8 +54,8 @@ export class GuardrailsService implements IGuardrailsService {
       };
     }
 
-    let cleanText = this.normalizeString(rawInput);
-    
+    const cleanText = this.normalizeString(rawInput);
+
     if (this.checkAbuse(cleanText, config.guardrails.bannedPatterns)) {
       return {
         status: 'ABUSE',

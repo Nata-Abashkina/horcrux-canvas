@@ -1,3 +1,4 @@
+// src/types.ts
 import type { ILangInterface } from "./config/lang.interface";
 
 export interface IStrokePoint {
@@ -18,8 +19,21 @@ export interface ICanvasView {
   drawStroke(pixelPoints: IPixelPoint[]): void;
   drawTextChar(char: string, x: number, y: number, font: string): void;
   drawSnapshot(source: HTMLCanvasElement | HTMLImageElement): void;
+  drawSnapshotScaled(source: HTMLCanvasElement, width: number, height: number): void;
   setAlpha(alpha: number): void;
   resetFilters(): void;
+
+  // Основной поток: ответ Тома
+  drawTextLine(line: string, x: number, y: number, font: string, alpha: number): void;
+  measureText(text: string, font: string): number;
+
+  // Впитывание: используется через ctx (см. getContext)
+  drawFadingStroke(points: IPixelPoint[], alpha: number, lineWidth: number): void;
+  drawFadingChar(char: string, x: number, y: number, font: string, alpha: number): void;
+
+  // Точка расширения: надстройки (пасхалки) получают ctx отсюда.
+  // View не знает, зачем. Если надстройку удалить — метод остаётся.
+  getContext(): CanvasRenderingContext2D;
 }
 
 export interface IInputView {
@@ -48,8 +62,10 @@ export interface IDiaryModel {
   easterEgg: string | null;
   aiResponse: IAIResponse | null;
   languages: Record<string, ILangInterface>;
-  onDataChanged: (() => void) | null;
   pendingImage: string | null;
+
+  // Observer: массив подписчиков вместо одного onDataChanged
+  subscribe(listener: () => void): () => void;
 }
 
 export interface IOCRService {
@@ -62,6 +78,7 @@ export interface ICanvasPresenter {
   handlePointerMove(e: PointerEvent): void;
   handleResize(): void;
   clearCanvas(): void;
+  handleModelUpdate(): void;
 }
 
 export interface IGuardrailsResult {

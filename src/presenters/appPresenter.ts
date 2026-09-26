@@ -1,6 +1,6 @@
+// src/presenters/appPresenter.ts
 import type { IDiaryModel, IInputView, IGuardrailsService, IAIClientService } from '../types';
 import type { ILangInterface } from '../config/lang.interface';
-import { normalizeToRu, normalizeToEn } from '../config/normalize';
 
 export class AppPresenter {
   private readonly diaryModel: IDiaryModel;
@@ -20,16 +20,6 @@ export class AppPresenter {
     this.guardrailsService = guardrailsService;
     this.inputView = inputView;
     this.aiClient = aiClient;
-
-    this.diaryModel.onDataChanged = () => {
-      if (this.isProcessingEvent) return;
-
-      if (this.diaryModel.text.trim().length > 0 && this.diaryModel.isLocked) {
-        this.handleModelUpdate().catch((error) => {
-          console.error("Критический сбой текстового контура:", error);
-        });
-      }
-    };
   }
 
   public bindEvents(buttonElement: HTMLButtonElement): void {
@@ -39,6 +29,15 @@ export class AppPresenter {
       buttonElement.blur();
       this.handleLanguageToggle();
     });
+  }
+
+  // Публичный — вызывается из main.ts через diaryModel.subscribe()
+  public handleModelUpdate(): void {
+    if (this.isProcessingEvent) return;
+
+    if (this.diaryModel.text.trim().length > 0 && this.diaryModel.isLocked) {
+      this.processInput().catch(() => {});
+    }
   }
 
   private handleLanguageToggle(): void {
@@ -60,13 +59,14 @@ export class AppPresenter {
     this.inputView.updateLangButton(nextConfig.locale.toUpperCase());
   }
 
-  private async handleModelUpdate(): Promise<void> {
+  private async processInput(): Promise<void> {
     this.isProcessingEvent = true;
 
     try {
       const config = this.diaryModel.config;
       const recognizedText = this.diaryModel.text;
 
+      // 1. Пасхалка
       const eggType = this.findEasterEgg(recognizedText, config);
       if (eggType) {
         this.diaryModel.text = '';
@@ -76,6 +76,7 @@ export class AppPresenter {
         return;
       }
 
+      // 2. Guardrails
       let finalResponse = '';
       const guardrailsResult = this.guardrailsService.validate(recognizedText, config);
 
@@ -83,12 +84,19 @@ export class AppPresenter {
         finalResponse = guardrailsResult.responseText || '';
         this.diaryModel.pendingImage = null;
       } else {
+        // 3. ИИ
         const image = this.diaryModel.pendingImage ?? undefined;
         this.diaryModel.pendingImage = null;
-        finalResponse = await this.aiClient.sendMessage(
-          guardrailsResult.cleanedText,
-          image
-        );
+
+        try {
+          const aiResult = await this.aiClient.sendMessage(
+            guardrailsResult.cleanedText,
+            image
+          );
+          finalResponse = typeof aiResult === 'string' ? aiResult : '';
+        } catch {
+          finalResponse = '';
+        }
       }
 
       this.diaryModel.text = '';
@@ -98,8 +106,7 @@ export class AppPresenter {
         isVisible: true
       };
       this.diaryModel.isLoading = false;
-    } catch (error) {
-      console.error('Ошибка в handleModelUpdate:', error);
+    } catch {
       this.diaryModel.isLocked = false;
       this.diaryModel.isLoading = false;
     } finally {
@@ -108,15 +115,13 @@ export class AppPresenter {
   }
 
   private findEasterEgg(text: string, config: ILangInterface): string | null {
+    if (!config || !config.easterEggs) return null;
+
     const compact = text.toLowerCase().replace(/\s+/g, '');
     if (compact.length === 0) return null;
 
-    const normalized = config.locale === 'ru'
-      ? normalizeToRu(compact)
-      : normalizeToEn(compact);
-
     for (const [type, egg] of Object.entries(config.easterEggs)) {
-      if (egg.trigger.test(normalized)) return type;
+      if (egg.trigger.test(compact)) return type;
     }
     return null;
   }

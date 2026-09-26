@@ -1,3 +1,4 @@
+// src/models/diaryModel.ts
 import { langEn } from "../config/lang.en";
 import type { ILangInterface } from "../config/lang.interface";
 import { langRU } from "../config/lang.ru";
@@ -11,13 +12,30 @@ export class DiaryModel implements IDiaryModel {
   private _easterEgg: string | null = null;
   private _aiResponse: IAIResponse | null = null;
   private _pendingImage: string | null = null;
-  
-  public readonly languagesMap: Record<string, ILangInterface> = { ru: langRU, en: langEn };
-  public onDataChanged: (() => void) | null = null;
+
+  private readonly languagesMap: Record<string, ILangInterface> = { ru: langRU, en: langEn };
+  private listeners: Array<() => void> = [];
 
   constructor(initialConfig: ILangInterface) {
     this._activeConfig = initialConfig;
   }
+
+  // ============ OBSERVER ============
+
+  public subscribe(listener: () => void): () => void {
+    this.listeners.push(listener);
+    return () => {
+      this.listeners = this.listeners.filter(l => l !== listener);
+    };
+  }
+
+  private notify(): void {
+    for (const listener of this.listeners) {
+      listener();
+    }
+  }
+
+  // ============ GETTERS / SETTERS ============
 
   get isLoading(): boolean {
     return this._isAILoading;
@@ -25,9 +43,7 @@ export class DiaryModel implements IDiaryModel {
 
   set isLoading(value: boolean) {
     this._isAILoading = value;
-    if (this.onDataChanged) {
-      this.onDataChanged();
-    }
+    this.notify();
   }
 
   get isLocked(): boolean {
@@ -36,9 +52,7 @@ export class DiaryModel implements IDiaryModel {
 
   set isLocked(value: boolean) {
     this._inputLock = value;
-    if (this.onDataChanged) {
-      this.onDataChanged();
-    }
+    this.notify();
   }
 
   get config(): ILangInterface {
@@ -47,9 +61,7 @@ export class DiaryModel implements IDiaryModel {
 
   set config(value: ILangInterface) {
     this._activeConfig = value;
-    if (this.onDataChanged) {
-      this.onDataChanged();
-    }
+    this.notify();
   }
 
   get languages(): Record<string, ILangInterface> {
@@ -62,9 +74,7 @@ export class DiaryModel implements IDiaryModel {
 
   set text(value: string) {
     this._text = value;
-    if (this.onDataChanged) {
-      this.onDataChanged();
-    }
+    this.notify();
   }
 
   get easterEgg(): string | null {
@@ -73,9 +83,7 @@ export class DiaryModel implements IDiaryModel {
 
   set easterEgg(value: string | null) {
     this._easterEgg = value;
-    if (this.onDataChanged) {
-      this.onDataChanged();
-    }
+    this.notify();
   }
 
   get pendingImage(): string | null {
@@ -84,20 +92,15 @@ export class DiaryModel implements IDiaryModel {
 
   set pendingImage(value: string | null) {
     this._pendingImage = value;
-    if (this.onDataChanged) {
-      this.onDataChanged();
-    }
+    this.notify();
   }
 
-  // НОВОЕ: Геттер и сеттер для ответа ИИ
   get aiResponse(): IAIResponse | null {
     return this._aiResponse;
   }
 
   set aiResponse(value: IAIResponse | null) {
     this._aiResponse = value;
-    if (this.onDataChanged) {
-      this.onDataChanged();
-    }
+    this.notify();
   }
 }

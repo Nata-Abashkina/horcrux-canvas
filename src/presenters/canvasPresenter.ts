@@ -1,16 +1,24 @@
-import type { ICanvasPresenter, ICanvasView, IDiaryModel, IOCRService, IStrokeService, IPixelPoint } from "../types";
+// src/presenters/canvasPresenter.ts
+import type {
+  ICanvasPresenter,
+  ICanvasView,
+  IDiaryModel,
+  IOCRService,
+  IStrokeService,
+  IPixelPoint,
+} from "../types";
 import { EasterEggRegistry } from '../easterEggs/EasterEggRegistry';
 import { FONT_INPUT, FONT_TOM } from "../config/fonts";
+import { COLORS } from "../config/visual";
+import { LAYOUT } from "../config/layout";
+import { ANIMATIONS } from "../config/animations";
+import { DEBUG } from "../config/debug";
 
 interface IChronologicalChar {
   char: string;
   x: number;
   y: number;
   timestamp: number;
-}
-
-interface ICanvasViewWithContext extends ICanvasView {
-  readonly ctx: CanvasRenderingContext2D;
 }
 
 export class CanvasPresenter implements ICanvasPresenter {
@@ -20,14 +28,15 @@ export class CanvasPresenter implements ICanvasPresenter {
   private currentHeight: number = 0;
   private isTyping: boolean = false;
   private animationFrameId: number | null = null;
+
   private readonly view: ICanvasView;
   private readonly strokeService: IStrokeService;
   private readonly OCRService: IOCRService;
   private readonly diaryModel: IDiaryModel;
   private readonly canvas: HTMLCanvasElement;
 
-  private caretX: number = 50;
-  private caretY: number = 130;
+  private caretX: number = LAYOUT.START_X;
+  private caretY: number = LAYOUT.START_Y;
 
   private typedChars: IChronologicalChar[] = [];
   private sessionStartTime: number = 0;
@@ -51,55 +60,55 @@ export class CanvasPresenter implements ICanvasPresenter {
     this.OCRService = OCRService;
     this.diaryModel = diaryModel;
     this.canvas = canvas;
+  }
 
-    const existingOnDataChanged = this.diaryModel.onDataChanged;
+  // ============ ПУБЛИЧНЫЙ ВХОД ДЛЯ ПОДПИСКИ ============
 
-    this.diaryModel.onDataChanged = async () => {
-      if (existingOnDataChanged) {
-        existingOnDataChanged();
-      }
+  public handleModelUpdate(): void {
+    const eggType = this.diaryModel.easterEgg;
 
-      const eggType = this.diaryModel.easterEgg;
+    if (eggType) {
+      this.diaryModel.easterEgg = null;
+      const egg = EasterEggRegistry.find(eggType);
+      const eggConfig = this.diaryModel.config.easterEggs[eggType];
 
-      if (eggType) {
-        this.diaryModel.easterEgg = null;
-        const egg = EasterEggRegistry.find(eggType);
-        const eggConfig = this.diaryModel.config.easterEggs[eggType];
+      if (egg && eggConfig) {
+        const ctx = this.view.getContext();
 
-        if (egg && eggConfig) {
-          const ctx = (this.view as ICanvasViewWithContext).ctx;
-
-          if (egg.awaitsSecondInput) {
-            EasterEggRegistry.beginAwait(egg, eggConfig.response, eggConfig.overlayText ?? '');
-            this.diaryModel.isLocked = false;
-            return;
-          }
-
-          await egg.execute(ctx, this.currentWidth, this.currentHeight, eggConfig.response);
-
-          if (eggType === 'crucio') {
-            this.captureCrucioLayer();
-          }
-
-          if (eggConfig.finalize !== 'never-returns') {
-            this.diaryModel.isLocked = false;
-          }
-        } else {
+        if (egg.awaitsSecondInput) {
+          EasterEggRegistry.beginAwait(egg, eggConfig.response, eggConfig.overlayText ?? '');
           this.diaryModel.isLocked = false;
+          return;
         }
 
-        return;
+        egg.execute(ctx, this.currentWidth, this.currentHeight, eggConfig.response)
+          .then(() => {
+            if (eggType === 'crucio') {
+              this.captureCrucioLayer();
+            }
+            if (eggConfig.finalize !== 'never-returns') {
+              this.diaryModel.isLocked = false;
+            }
+          })
+          .catch(() => {
+            this.diaryModel.isLocked = false;
+          });
+      } else {
+        this.diaryModel.isLocked = false;
       }
+      return;
+    }
 
-      const aiResponse = this.diaryModel.aiResponse;
+    const aiResponse = this.diaryModel.aiResponse;
 
-      if (aiResponse?.isVisible && aiResponse.text && !this.aiResponseShown) {
-        this.aiResponseShown = true;
-        this.diaryModel.aiResponse = null;
-        this.animateAIResponseIn(aiResponse.text);
-      }
-    };
+    if (aiResponse?.isVisible && aiResponse.text && !this.aiResponseShown) {
+      this.aiResponseShown = true;
+      this.diaryModel.aiResponse = null;
+      this.animateAIResponseIn(aiResponse.text);
+    }
   }
+
+  // ============ ИНИЦИАЛИЗАЦИЯ ============
 
   init(): void {
     this.currentWidth = window.innerWidth;
@@ -152,12 +161,10 @@ export class CanvasPresenter implements ICanvasPresenter {
       e.preventDefault();
     });
 
-    // Протяжка пальцем — именно она триггерит выделение после long-press
     this.canvas.addEventListener('touchmove', (e: TouchEvent) => {
       e.preventDefault();
     }, { passive: false });
 
-    // Мультитач (pinch-zoom) — на всякий
     this.canvas.addEventListener('touchstart', (e: TouchEvent) => {
       if (e.touches.length > 1) {
         e.preventDefault();
@@ -190,21 +197,15 @@ export class CanvasPresenter implements ICanvasPresenter {
     window.addEventListener("resize", () => this.handleResize());
   }
 
-  private getResponsiveFontSize(baseSize: number): number {
-    const minScreen = 320;
-    const maxScreen = 1920;
-    const ratio = (this.currentWidth - minScreen) / (maxScreen - minScreen);
-    const clampedRatio = Math.max(0, Math.min(1, ratio));
-    return baseSize * (0.5 + 0.5 * clampedRatio);
+  // ============ АДАПТИВ ============
+
+  private getResponsive(base: number): number {
+    const ratio = (this.currentWidth - LAYOUT.MIN_SCREEN) / (LAYOUT.MAX_SCREEN - LAYOUT.MIN_SCREEN);
+    const clamped = Math.max(0, Math.min(1, ratio));
+    return base * (LAYOUT.SCALE_MIN + LAYOUT.SCALE_RANGE * clamped);
   }
 
-  private getResponsiveSpacing(baseSpacing: number): number {
-    const minScreen = 320;
-    const maxScreen = 1920;
-    const ratio = (this.currentWidth - minScreen) / (maxScreen - minScreen);
-    const clampedRatio = Math.max(0, Math.min(1, ratio));
-    return baseSpacing * (0.5 + 0.5 * clampedRatio);
-  }
+  // ============ CRUCIO LAYER ============
 
   private captureCrucioLayer(): void {
     const snap = document.createElement('canvas');
@@ -214,6 +215,8 @@ export class CanvasPresenter implements ICanvasPresenter {
     if (sctx) sctx.drawImage(this.canvas, 0, 0);
     this.crucioLayer = snap;
   }
+
+  // ============ АНИМАЦИЯ ОТВЕТА ТОМА ============
 
   private animateAIResponseIn(text: string): void {
     if (this.aiResponseAnimFrameId !== null) {
@@ -228,7 +231,7 @@ export class CanvasPresenter implements ICanvasPresenter {
     this.aiResponseText = text;
     this.diaryModel.isLocked = true;
 
-    const totalFrames = 300;
+    const totalFrames = ANIMATIONS.RESPONSE_FRAMES;
     let currentFrame = 0;
 
     const tick = () => {
@@ -248,7 +251,7 @@ export class CanvasPresenter implements ICanvasPresenter {
 
         this.aiResponseTimeoutId = window.setTimeout(() => {
           this.animateAIResponseOut();
-        }, 5000);
+        }, ANIMATIONS.RESPONSE_PAUSE_MS);
       }
     };
 
@@ -267,7 +270,7 @@ export class CanvasPresenter implements ICanvasPresenter {
 
     this.diaryModel.isLocked = true;
 
-    const totalFrames = 300;
+    const totalFrames = ANIMATIONS.RESPONSE_FRAMES;
     let currentFrame = 0;
 
     const tick = () => {
@@ -301,21 +304,12 @@ export class CanvasPresenter implements ICanvasPresenter {
   private renderAIResponseText(alpha: number): void {
     if (!this.aiResponseText || alpha <= 0) return;
 
-    const viewWithContext = this.view as ICanvasViewWithContext;
-    const ctx = viewWithContext.ctx;
-
-    if (!ctx) return;
-
-    const fontSize = this.getResponsiveFontSize(80);
-    const lineHeight = this.getResponsiveSpacing(90);
-    const startX = this.getResponsiveSpacing(50);
+    const fontSize = this.getResponsive(LAYOUT.BASE_FONT_SIZE);
+    const lineHeight = this.getResponsive(LAYOUT.LINE_HEIGHT_TOM);
+    const startX = this.getResponsive(LAYOUT.START_X);
     const startY = this.currentHeight * 0.25;
     const maxWidth = this.currentWidth - startX * 2;
-
-    ctx.save();
-    ctx.font = `${fontSize}px '${FONT_TOM}'`;
-    ctx.fillStyle = "#1a1a3a";
-    ctx.globalAlpha = alpha;
+    const font = `${fontSize}px '${FONT_TOM}'`;
 
     const words = this.aiResponseText.split(' ');
     let line = '';
@@ -323,10 +317,10 @@ export class CanvasPresenter implements ICanvasPresenter {
 
     for (const word of words) {
       const testLine = line ? `${line} ${word}` : word;
-      const metrics = ctx.measureText(testLine);
+      const width = this.view.measureText(testLine, font);
 
-      if (metrics.width > maxWidth && line) {
-        ctx.fillText(line, startX, y);
+      if (width > maxWidth && line) {
+        this.view.drawTextLine(line, startX, y, font, alpha);
         line = word;
         y += lineHeight;
       } else {
@@ -335,14 +329,15 @@ export class CanvasPresenter implements ICanvasPresenter {
     }
 
     if (line) {
-      ctx.fillText(line, startX, y);
+      this.view.drawTextLine(line, startX, y, font, alpha);
     }
-
-    ctx.restore();
   }
 
+  // ============ ВВОД ============
+
   private handlePointerDown(e: PointerEvent): void {
-    if (this.diaryModel.isLocked || (this.ocrTimeoutId !== null && this.isTyping)) {
+    // Блокировка: мышь не работает, пока идёт печать
+    if (this.diaryModel.isLocked || this.isTyping) {
       return;
     }
 
@@ -353,7 +348,7 @@ export class CanvasPresenter implements ICanvasPresenter {
 
     try {
       this.canvas.setPointerCapture(e.pointerId);
-    } catch (err) {
+    } catch {
       // Игнорируем
     }
 
@@ -403,31 +398,24 @@ export class CanvasPresenter implements ICanvasPresenter {
 
     this.ocrTimeoutId = window.setTimeout(() => {
       if (EasterEggRegistry.isAwaitingInput()) {
-        this.isDrawing = false;
-        this.diaryModel.isLocked = true;
-        const ctx = (this.view as ICanvasViewWithContext).ctx;
-        EasterEggRegistry.notifyInputComplete(ctx, this.currentWidth, this.currentHeight, {
-          typedChars: this.typedChars.map(c => ({ char: c.char, x: c.x, y: c.y })),
-          strokePoints: this.strokeService.getPoints().map(p => ({ x: p.x, y: p.y, isNew: p.isNew })),
-        }).then(() => {
-          this.diaryModel.isLocked = false;
-          this.finalizeSession();
-        });
+        this.handleEasterEggSecondInput();
         return;
       }
       this.isDrawing = false;
+      this.diaryModel.isLocked = true;   // ← блокируем ввод до конца ответа Тома
       this.executeAbsorptionLoop();
-    }, 1200);
+    }, ANIMATIONS.INPUT_DEBOUNCE_MS);
   }
 
   private handleDesktopInput(e: KeyboardEvent): void {
-    if (this.diaryModel.isLocked || (this.ocrTimeoutId !== null && this.isDrawing)) {
+    // Блокировка: клавиатура не работает, пока идёт рисование
+    if (this.diaryModel.isLocked || this.isDrawing) {
       return;
     }
 
     if (e.key === "Enter") {
-      this.caretX = this.getResponsiveSpacing(50);
-      this.caretY += this.getResponsiveSpacing(130);
+      this.caretX = this.getResponsive(LAYOUT.START_X);
+      this.caretY += this.getResponsive(LAYOUT.LINE_HEIGHT_USER);
       return;
     }
 
@@ -442,7 +430,7 @@ export class CanvasPresenter implements ICanvasPresenter {
         this.sessionStartTime = performance.now();
       }
 
-      const fontSize = this.getResponsiveFontSize(80);
+      const fontSize = this.getResponsive(LAYOUT.BASE_FONT_SIZE);
       this.view.drawTextChar(e.key, this.caretX, this.caretY, `${fontSize}px '${FONT_INPUT}'`);
 
       this.typedChars.push({
@@ -452,32 +440,50 @@ export class CanvasPresenter implements ICanvasPresenter {
         timestamp: performance.now() - this.sessionStartTime
       });
 
-      this.caretX += this.getResponsiveSpacing(65);
+      this.caretX += this.getResponsive(LAYOUT.LETTER_SPACING);
 
-      if (this.caretX > this.currentWidth - this.getResponsiveSpacing(50)) {
-        this.caretX = this.getResponsiveSpacing(50);
-        this.caretY += this.getResponsiveSpacing(130);
+      if (this.caretX > this.currentWidth - this.getResponsive(LAYOUT.START_X)) {
+        this.caretX = this.getResponsive(LAYOUT.START_X);
+        this.caretY += this.getResponsive(LAYOUT.LINE_HEIGHT_USER);
       }
 
       this.ocrTimeoutId = window.setTimeout(() => {
         if (EasterEggRegistry.isAwaitingInput()) {
-          this.isTyping = false;
-          this.diaryModel.isLocked = true;
-          const ctx = (this.view as ICanvasViewWithContext).ctx;
-          EasterEggRegistry.notifyInputComplete(ctx, this.currentWidth, this.currentHeight, {
-            typedChars: this.typedChars.map(c => ({ char: c.char, x: c.x, y: c.y })),
-            strokePoints: this.strokeService.getPoints().map(p => ({ x: p.x, y: p.y, isNew: p.isNew })),
-          }).then(() => {
-            this.diaryModel.isLocked = false;
-            this.finalizeSession();
-          });
+          this.handleEasterEggSecondInput();
           return;
         }
         this.isTyping = false;
+        this.diaryModel.isLocked = true;   // ← блокируем ввод до конца ответа Тома
         this.executeAbsorptionLoop();
-      }, 1200);
+      }, ANIMATIONS.INPUT_DEBOUNCE_MS);
     }
   }
+
+  private handleEasterEggSecondInput(): void {
+    this.isDrawing = false;
+    this.isTyping = false;
+    this.diaryModel.isLocked = true;
+
+    const ctx = this.view.getContext();
+
+    EasterEggRegistry.notifyInputComplete(
+      ctx,
+      this.currentWidth,
+      this.currentHeight,
+      {
+        typedChars: this.typedChars.map(c => ({ char: c.char, x: c.x, y: c.y })),
+        strokePoints: this.strokeService.getPoints().map(p => ({ x: p.x, y: p.y, isNew: p.isNew })),
+      }
+    ).then(() => {
+      this.diaryModel.isLocked = false;
+      this.finalizeSession();
+    }).catch(() => {
+      this.diaryModel.isLocked = false;
+      this.finalizeSession();
+    });
+  }
+
+  // ============ ОТРИСОВКА ЖИВОГО ШТРИХА ============
 
   private renderLiveBezierSegment(points: IPixelPoint[]): void {
     const len = points.length;
@@ -496,6 +502,8 @@ export class CanvasPresenter implements ICanvasPresenter {
 
     this.view.drawStroke(segment);
   }
+
+  // ============ ВПИТЫВАНИЕ ЧЕРНИЛ ============
 
   private getCapillaryNoise(index: number): number {
     const hash = (Math.imul(index, 0x9E3779B1) ^ 0x85EBCA6B) >>> 0;
@@ -518,13 +526,11 @@ export class CanvasPresenter implements ICanvasPresenter {
     if (ocrCtx) {
       ocrCtx.scale(dpr, dpr);
 
-      // Восстанавливаем состояние пера как во view
-      ocrCtx.strokeStyle = "#2b2b2b";
+      ocrCtx.strokeStyle = COLORS.USER_INK;
       ocrCtx.lineWidth = 2;
       ocrCtx.lineCap = "round";
       ocrCtx.lineJoin = "round";
 
-      // Штрихи пальцем
       const allPoints = this.strokeService.getPoints();
       if (allPoints.length > 0) {
         ocrCtx.beginPath();
@@ -538,10 +544,9 @@ export class CanvasPresenter implements ICanvasPresenter {
         ocrCtx.stroke();
       }
 
-      // Буквы с клавиатуры
-      const fontSize = this.getResponsiveFontSize(80);
+      const fontSize = this.getResponsive(LAYOUT.BASE_FONT_SIZE);
       ocrCtx.font = `${fontSize}px '${FONT_INPUT}'`;
-      ocrCtx.fillStyle = "#2b2b2b";
+      ocrCtx.fillStyle = COLORS.USER_INK;
       for (const tc of this.typedChars) {
         ocrCtx.fillText(tc.char, tc.x, tc.y);
       }
@@ -550,10 +555,12 @@ export class CanvasPresenter implements ICanvasPresenter {
     const points = this.strokeService.getPoints();
     const totalInputDuration = this.typedChars.length > 0
       ? this.typedChars[this.typedChars.length - 1].timestamp
-      : 3000;
+      : ANIMATIONS.ABSORPTION_DEFAULT_DURATION;
+
+    const ctx = this.view.getContext();
 
     let currentFrame = 0;
-    const totalFrames = 180;
+    const totalFrames = ANIMATIONS.ABSORPTION_FRAMES;
 
     const tick = () => {
       currentFrame++;
@@ -561,33 +568,20 @@ export class CanvasPresenter implements ICanvasPresenter {
 
       this.view.clear(this.currentWidth, this.currentHeight);
 
-      const viewWithContext = this.view as ICanvasViewWithContext;
-      const ctx = viewWithContext.ctx;
-
-      if (ctx) {
-        // Фон — трещины, если они есть
-        if (this.crucioLayer) {
-          ctx.save();
-          ctx.drawImage(this.crucioLayer, 0, 0, this.currentWidth, this.currentHeight);
-          ctx.restore();
-        }
-
-        this.drawFadingStrokes(ctx, points, globalProgress, totalInputDuration);
-        this.drawFadingText(ctx, globalProgress, totalInputDuration);
+      if (this.crucioLayer) {
+        this.view.drawSnapshotScaled(this.crucioLayer, this.currentWidth, this.currentHeight);
       }
+
+      this.drawFadingStrokes(ctx, points, globalProgress, totalInputDuration);
+      this.drawFadingText(ctx, globalProgress, totalInputDuration);
 
       if (currentFrame < totalFrames) {
         this.animationFrameId = requestAnimationFrame(tick);
       } else {
         this.view.clear(this.currentWidth, this.currentHeight);
 
-        // Финальный кадр — трещины остаются на холсте
         if (this.crucioLayer) {
-          const viewWithContext2 = this.view as ICanvasViewWithContext;
-          const ctx2 = viewWithContext2.ctx;
-          if (ctx2) {
-            ctx2.drawImage(this.crucioLayer, 0, 0, this.currentWidth, this.currentHeight);
-          }
+          this.view.drawSnapshotScaled(this.crucioLayer, this.currentWidth, this.currentHeight);
         }
 
         this.view.resetFilters();
@@ -599,6 +593,7 @@ export class CanvasPresenter implements ICanvasPresenter {
     this.animationFrameId = requestAnimationFrame(tick);
   }
 
+  // ОРИГИНАЛЬНАЯ логика с Безье — восстановлена.
   private drawFadingStrokes(
     ctx: CanvasRenderingContext2D,
     points: IPixelPoint[],
@@ -666,7 +661,7 @@ export class CanvasPresenter implements ICanvasPresenter {
     globalProgress: number,
     duration: number
   ): void {
-    const fontSize = this.getResponsiveFontSize(80);
+    const fontSize = this.getResponsive(LAYOUT.BASE_FONT_SIZE);
 
     for (let i = 0; i < this.typedChars.length; i++) {
       const tc = this.typedChars[i];
@@ -685,6 +680,8 @@ export class CanvasPresenter implements ICanvasPresenter {
     }
   }
 
+  // ============ OCR ============
+
   private triggerOCRService(bufferedCanvas: HTMLCanvasElement): void {
     this.diaryModel.isLocked = true;
     this.diaryModel.isLoading = true;
@@ -701,7 +698,9 @@ export class CanvasPresenter implements ICanvasPresenter {
         }
       })
       .catch((error: Error) => {
-        console.error('Ошибка OCR:', error);
+        if (DEBUG.CANVAS) {
+          console.error('Ошибка OCR:', error);
+        }
         this.diaryModel.isLoading = false;
         this.diaryModel.isLocked = false;
       })
@@ -710,10 +709,12 @@ export class CanvasPresenter implements ICanvasPresenter {
       });
   }
 
+  // ============ ФИНАЛИЗАЦИЯ ============
+
   private finalizeSession(): void {
     this.ocrTimeoutId = null;
-    this.caretX = this.getResponsiveSpacing(50);
-    this.caretY = this.getResponsiveSpacing(130);
+    this.caretX = this.getResponsive(LAYOUT.START_X);
+    this.caretY = this.getResponsive(LAYOUT.START_Y);
     this.isDrawing = false;
     this.isTyping = false;
     this.typedChars = [];
@@ -727,10 +728,7 @@ export class CanvasPresenter implements ICanvasPresenter {
     this.view.setDimensions(this.currentWidth, this.currentHeight, dpr);
 
     if (this.crucioLayer) {
-      const viewWithContext = this.view as ICanvasViewWithContext;
-      if (viewWithContext.ctx) {
-        viewWithContext.ctx.drawImage(this.crucioLayer, 0, 0, this.currentWidth, this.currentHeight);
-      }
+      this.view.drawSnapshotScaled(this.crucioLayer, this.currentWidth, this.currentHeight);
     }
   }
 

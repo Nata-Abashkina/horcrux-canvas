@@ -1,3 +1,4 @@
+// src/main.ts
 import { DiaryModel } from "./models/diaryModel";
 import { StrokeService } from "./models/strokeService";
 import { OCRService } from "./services/OCRService";
@@ -34,8 +35,8 @@ if (!ctx) {
 
 // Определяем начальный язык по кнопке
 const buttonLocale = langButton.dataset.lang;
-const initialConfig = buttonLocale 
-  ? languagesMap[buttonLocale] 
+const initialConfig = buttonLocale
+  ? languagesMap[buttonLocale]
   : Object.values(languagesMap)[0];
 
 if (!initialConfig) {
@@ -47,7 +48,7 @@ const diaryModel = new DiaryModel(initialConfig);
 const strokeService = new StrokeService();
 
 // ЗАПУСКАЕМ СЕТЕВЫЕ И СЕРВИСНЫЕ КОНТУРЫ
-const ocrService = new OCRService(); 
+const ocrService = new OCRService();
 const guardrailsService = new GuardrailsService();
 const aiClient = new AIClientService(initialConfig);
 
@@ -56,7 +57,6 @@ const canvasView = new CanvasView(ctx);
 const inputView = new InputView(canvasElement, langButton);
 
 // СОБИРАЕМ ПРЕЗЕНТЕРЫ
-// СНАЧАЛА AppPresenter — он установит свой onDataChanged
 const appPresenter = new AppPresenter(
   diaryModel,
   guardrailsService,
@@ -64,7 +64,6 @@ const appPresenter = new AppPresenter(
   aiClient
 );
 
-// ПОТОМ CanvasPresenter — он обернёт обработчик AppPresenter
 const canvasPresenter = new CanvasPresenter(
   canvasView,
   strokeService,
@@ -72,6 +71,10 @@ const canvasPresenter = new CanvasPresenter(
   diaryModel,
   canvasElement
 );
+
+// ПОДПИСКА НА МОДЕЛЬ — ЯВНАЯ, ПОРЯДОК ЗАДАЁМ ЗДЕСЬ
+diaryModel.subscribe(() => appPresenter.handleModelUpdate());
+diaryModel.subscribe(() => canvasPresenter.handleModelUpdate());
 
 registerLore();
 
