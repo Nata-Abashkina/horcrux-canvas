@@ -1,8 +1,6 @@
 import { bezier } from './Bezier';
 import { runFrames } from './RunFrames';
-
-export const TOTAL_FRAMES = 300;
-export const PAUSE_MS = 5000;
+import { LORE_ANIMATIONS } from '../config/lore.hp.config';
 
 export interface IFadeCallbacks {
   onAppear: (alpha: number) => void;
@@ -12,15 +10,15 @@ export interface IFadeCallbacks {
 }
 
 export const appearPauseDisappear = async (cb: IFadeCallbacks): Promise<void> => {
-  await runFrames(TOTAL_FRAMES, (progress) => {
+  await runFrames(LORE_ANIMATIONS.EGG_FADE_FRAMES, (progress) => {
     cb.onAppear(bezier(progress));
   });
 
   cb.onFull();
 
-  await new Promise((r) => setTimeout(r, PAUSE_MS));
+  await new Promise((r) => setTimeout(r, LORE_ANIMATIONS.EGG_FADE_PAUSE_MS));
 
-  await runFrames(TOTAL_FRAMES, (progress) => {
+  await runFrames(LORE_ANIMATIONS.EGG_FADE_FRAMES, (progress) => {
     cb.onDisappear(1 - bezier(progress));
   });
 

@@ -9,10 +9,7 @@ import type {
 } from "../types";
 import { EasterEggRegistry } from '../easterEggs/EasterEggRegistry';
 import { FONT_INPUT, FONT_TOM } from "../config/fonts";
-import { COLORS } from "../config/visual";
-import { LAYOUT } from "../config/layout";
-import { ANIMATIONS } from "../config/animations";
-import { DEBUG } from "../config/debug";
+import { COLORS, LAYOUT, ANIMATIONS } from "../config/core.theme.config";
 
 interface IChronologicalChar {
   char: string;
@@ -697,10 +694,7 @@ export class CanvasPresenter implements ICanvasPresenter {
           this.diaryModel.isLocked = false;
         }
       })
-      .catch((error: Error) => {
-        if (DEBUG.CANVAS) {
-          console.error('Ошибка OCR:', error);
-        }
+      .catch(() => {
         this.diaryModel.isLoading = false;
         this.diaryModel.isLocked = false;
       })

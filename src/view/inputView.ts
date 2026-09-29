@@ -1,7 +1,7 @@
 // src/view/inputView.ts
 import type { IInputView } from "../types";
 import { FONT_TOM, FONT_INPUT } from "../config/fonts";
-import { COLORS } from "../config/visual";
+import { COLORS } from "../config/core.theme.config";
 
 export class InputView implements IInputView {
   private readonly ctx: CanvasRenderingContext2D;

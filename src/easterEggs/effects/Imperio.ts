@@ -4,6 +4,7 @@ import { bezier } from '../shared/Bezier';
 import { appearPauseDisappear } from '../shared/AppearPauseDisappear';
 import { renderText } from '../shared/RenderText';
 import { FONT_IMPERIO, FONT_TOM } from '../../config/fonts';
+import { LORE_COLORS, LORE_LAYOUT, LORE_ANIMATIONS } from '../config/lore.hp.config';
 
 export class Imperio implements IEasterEgg {
   readonly type = 'imperio';
@@ -21,26 +22,19 @@ export class Imperio implements IEasterEgg {
     overlayText: string,
     canvasState: ICanvasState
   ): Promise<void> {
-    const COLOR_STRIKE = '#1a1a1a';
-    const COLOR_OVERLAY = '#6b0f1a';
-    const COLOR_RESPONSE = '#1a1a3a';
-    const BASE_FONT_SIZE = 80;
-    const fontSize = Math.max(BASE_FONT_SIZE * 0.5, Math.min(BASE_FONT_SIZE, width * 0.05));
-    const lineHeight = fontSize * 1.4;
+    const fontSize = width * LORE_LAYOUT.IMPERIO_FONT_SIZE_RATIO;
+    const lineHeight = fontSize * LORE_LAYOUT.IMPERIO_LINE_HEIGHT_RATIO;
     const startX = fontSize;
     const maxWidth = width - fontSize * 2;
-    const TRANSITION_FRAMES = 300;
 
-    // Позиция overlay — верхняя точка ввода
     const inputMinY = this.getInputMinY(canvasState, height);
-    const overlayStartY = inputMinY > 0 ? inputMinY : height * 0.15;
+    const overlayStartY = inputMinY > 0 ? inputMinY : height * LORE_LAYOUT.IMPERIO_TEXT_START_Y;
 
-    // Зачёркивание — рисуем поверх живого холста
     const strikeLines = this.buildStrikeLines(canvasState, width, height);
 
     const drawStrikes = (alpha: number) => {
       ctx.save();
-      ctx.strokeStyle = COLOR_STRIKE;
+      ctx.strokeStyle = LORE_COLORS.IMPERIO_STRIKE;
       ctx.lineWidth = 2;
       ctx.globalAlpha = alpha;
       for (const line of strikeLines) {
@@ -54,7 +48,6 @@ export class Imperio implements IEasterEgg {
 
     drawStrikes(1);
 
-    // Снимок холста: второй ввод + зачёркивание
     const snapshot = document.createElement('canvas');
     snapshot.width = ctx.canvas.width;
     snapshot.height = ctx.canvas.height;
@@ -73,7 +66,7 @@ export class Imperio implements IEasterEgg {
     const drawOverlay = (alpha: number) => {
       renderText(ctx, overlayText, {
         fontSize,
-        color: COLOR_OVERLAY,
+        color: LORE_COLORS.IMPERIO_OVERLAY,
         alpha,
         startX,
         startY: overlayStartY,
@@ -83,19 +76,16 @@ export class Imperio implements IEasterEgg {
       });
     };
 
-    // ФАЗА 1: overlay появляется, ввод + зачёркивание исчезают — одновременно
-    await runFrames(TRANSITION_FRAMES, (progress) => {
+    await runFrames(LORE_ANIMATIONS.IMPERIO_TRANSITION_FRAMES, (progress) => {
       const eased = bezier(progress);
       ctx.clearRect(0, 0, width, height);
       drawSnapshot(1 - eased);
       drawOverlay(eased);
     });
 
-    // ПАУЗА: overlay висит
-    await new Promise((r) => setTimeout(r, 5000));
+    await new Promise((r) => setTimeout(r, LORE_ANIMATIONS.IMPERIO_PAUSE_MS));
 
-    // ФАЗА 2: overlay исчезает
-    await runFrames(TRANSITION_FRAMES, (progress) => {
+    await runFrames(LORE_ANIMATIONS.IMPERIO_TRANSITION_FRAMES, (progress) => {
       const eased = bezier(progress);
       ctx.clearRect(0, 0, width, height);
       drawOverlay(1 - eased);
@@ -103,15 +93,14 @@ export class Imperio implements IEasterEgg {
 
     ctx.clearRect(0, 0, width, height);
 
-    // Сцена ответа Тома — стандартным путём
     const drawResponse = (alpha: number) => {
       ctx.clearRect(0, 0, width, height);
       renderText(ctx, response, {
         fontSize,
-        color: COLOR_RESPONSE,
+        color: LORE_COLORS.IMPERIO_RESPONSE,
         alpha,
         startX,
-        startY: height * 0.25,
+        startY: height * LORE_LAYOUT.IMPERIO_TEXT_START_Y,
         maxWidth,
         lineHeight,
         fontFamily: FONT_TOM,
@@ -162,20 +151,20 @@ export class Imperio implements IEasterEgg {
 
     if (xs.length === 0) return [];
 
-    const minX = Math.min(...xs) - 10;
-    const maxX = Math.max(...xs) + 10;
-    const minY = Math.min(...ys) - 30;
-    const maxY = Math.max(...ys) + 10;
+    const minX = Math.min(...xs) + LORE_LAYOUT.IMPERIO_STRIKE_OFFSET_X * -1;
+    const maxX = Math.max(...xs) + LORE_LAYOUT.IMPERIO_STRIKE_OFFSET_X;
+    const minY = Math.min(...ys) + LORE_LAYOUT.IMPERIO_STRIKE_OFFSET_Y_TOP;
+    const maxY = Math.max(...ys) + LORE_LAYOUT.IMPERIO_STRIKE_OFFSET_Y_BOTTOM;
 
     const lines: { x1: number; y1: number; x2: number; y2: number }[] = [];
-    const count = 8;
+    const count = LORE_LAYOUT.IMPERIO_STRIKE_LINE_COUNT;
     for (let i = 0; i < count; i++) {
       const t1 = i / count;
       const t2 = (i + 0.5) / count;
       const y1 = minY + (maxY - minY) * t1;
       const y2 = minY + (maxY - minY) * t2;
-      const x1 = minX + Math.random() * (maxX - minX) * 0.3;
-      const x2 = maxX - Math.random() * (maxX - minX) * 0.3;
+      const x1 = minX + Math.random() * (maxX - minX) * LORE_LAYOUT.IMPERIO_STRIKE_RANDOM_RATIO;
+      const x2 = maxX - Math.random() * (maxX - minX) * LORE_LAYOUT.IMPERIO_STRIKE_RANDOM_RATIO;
       lines.push({ x1, y1, x2, y2 });
     }
     return lines;

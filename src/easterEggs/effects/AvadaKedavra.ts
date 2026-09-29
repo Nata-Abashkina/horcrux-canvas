@@ -2,6 +2,8 @@ import type { IEasterEgg } from '../IEasterEgg';
 import { renderText } from '../shared/RenderText';
 import { appearPauseDisappear } from '../shared/AppearPauseDisappear';
 import { prefersReducedMotion } from '../shared/ReducedMotion';
+import { LORE_COLORS, LORE_LAYOUT, LORE_ANIMATIONS } from '../config/lore.hp.config';
+import { FONT_TOM } from '../../config/fonts';
 
 export class AvadaKedavra implements IEasterEgg {
   readonly type = 'avada_kedavra';
@@ -14,37 +16,36 @@ export class AvadaKedavra implements IEasterEgg {
   ): Promise<void> {
     const reducedMotion = prefersReducedMotion();
 
-    // Зелёная вспышка — только если не reducedMotion
     if (!reducedMotion) {
       ctx.save();
-      ctx.fillStyle = '#00ff00';
+      ctx.fillStyle = LORE_COLORS.AVADA_FLASH;
       ctx.fillRect(0, 0, width, height);
       ctx.restore();
 
       if (navigator.vibrate) {
-        navigator.vibrate([200]);
+        navigator.vibrate([LORE_ANIMATIONS.AVADA_VIBRATE_MS]);
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, LORE_ANIMATIONS.AVADA_FLASH_MS));
     }
 
-    const fontSize = width * 0.08;
+    const fontSize = width * LORE_LAYOUT.AVADA_FONT_SIZE_RATIO;
     const maxWidth = width - fontSize;
-    const lineHeight = fontSize * 1.2;
+    const lineHeight = fontSize * LORE_LAYOUT.AVADA_LINE_HEIGHT_RATIO;
     const startX = fontSize;
-    const startY = height * 0.3;
+    const startY = height * LORE_LAYOUT.AVADA_TEXT_START_Y;
 
     const draw = (alpha: number) => {
       ctx.clearRect(0, 0, width, height);
       renderText(ctx, response, {
         fontSize,
-        color: '#1a0000',
+        color: LORE_COLORS.AVADA_TEXT,
         alpha,
         startX,
         startY,
         maxWidth,
         lineHeight,
-        fontFamily: 'Gabriela',
+        fontFamily: FONT_TOM,
       });
     };
 
@@ -59,6 +60,6 @@ export class AvadaKedavra implements IEasterEgg {
       while (true) {
         // Пустота
       }
-    }, 2000);
+    }, LORE_ANIMATIONS.AVADA_FREEZE_DELAY_MS);
   }
 }

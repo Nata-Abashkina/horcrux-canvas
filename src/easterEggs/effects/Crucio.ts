@@ -3,6 +3,7 @@ import { renderText } from '../shared/RenderText';
 import { runFrames } from '../shared/RunFrames';
 import { bezier } from '../shared/Bezier';
 import { FONT_TOM } from '../../config/fonts';
+import { LORE_COLORS, LORE_LAYOUT, LORE_ANIMATIONS } from '../config/lore.hp.config';
 
 interface ICrack {
   pts: { x: number; y: number }[];
@@ -21,19 +22,17 @@ export class Crucio implements IEasterEgg {
   ): Promise<void> {
     const cracks = this.buildCracks(width, height);
 
-    // ФАЗА 1: трещины появляются
-    await runFrames(200, (progress) => {
+    await runFrames(LORE_ANIMATIONS.CRUCIO_CRACKS_FRAMES, (progress) => {
       const eased = bezier(progress);
       ctx.clearRect(0, 0, width, height);
       this.drawCracks(ctx, cracks, eased);
     });
 
-    // ФАЗА 2: ответ Тома
-    const fontSize = width * 0.06;
+    const fontSize = width * LORE_LAYOUT.CRUCIO_FONT_SIZE_RATIO;
     const maxWidth = width - fontSize * 2;
-    const lineHeight = fontSize * 1.4;
+    const lineHeight = fontSize * LORE_LAYOUT.CRUCIO_LINE_HEIGHT_RATIO;
     const startX = fontSize;
-    const startY = height * 0.25;
+    const startY = height * LORE_LAYOUT.CRUCIO_TEXT_START_Y;
 
     const drawScene = (alpha: number) => {
       ctx.clearRect(0, 0, width, height);
@@ -41,7 +40,7 @@ export class Crucio implements IEasterEgg {
       if (alpha > 0) {
         renderText(ctx, response, {
           fontSize,
-          color: '#1a0000',
+          color: LORE_COLORS.CRUCIO_LINE,
           alpha,
           startX,
           startY,
@@ -52,37 +51,36 @@ export class Crucio implements IEasterEgg {
       }
     };
 
-    await runFrames(300, (progress) => {
+    await runFrames(LORE_ANIMATIONS.CRUCIO_TEXT_FRAMES, (progress) => {
       drawScene(bezier(progress));
     });
     drawScene(1);
-    await new Promise((r) => setTimeout(r, 5000));
-    await runFrames(300, (progress) => {
+    await new Promise((r) => setTimeout(r, LORE_ANIMATIONS.CRUCIO_TEXT_PAUSE_MS));
+    await runFrames(LORE_ANIMATIONS.CRUCIO_TEXT_FRAMES, (progress) => {
       drawScene(1 - bezier(progress));
     });
 
-    // ФИНАЛ: только трещины, без текста. До перезагрузки.
     drawScene(0);
   }
 
   private buildCracks(width: number, height: number): ICrack[] {
-    const count = 3 + Math.floor(Math.random() * 3);
+    const count = LORE_LAYOUT.CRUCIO_COUNT_MIN + Math.floor(Math.random() * LORE_LAYOUT.CRUCIO_COUNT_RANGE);
     const cracks: ICrack[] = [];
 
     for (let i = 0; i < count; i++) {
-      const startX = width * (0.15 + Math.random() * 0.7);
-      const startY = height * (0.15 + Math.random() * 0.7);
-      const pts = this.walk(startX, startY, width, height, 12, 80);
+      const startX = width * (LORE_LAYOUT.CRUCIO_START_RATIO_MIN + Math.random() * LORE_LAYOUT.CRUCIO_START_RATIO_RANGE);
+      const startY = height * (LORE_LAYOUT.CRUCIO_START_RATIO_MIN + Math.random() * LORE_LAYOUT.CRUCIO_START_RATIO_RANGE);
+      const pts = this.walk(startX, startY, width, height, LORE_LAYOUT.CRUCIO_MAIN_STEPS, LORE_LAYOUT.CRUCIO_MAIN_STEP_LEN);
 
       const branches: { x: number; y: number }[][] = [];
-      const branchCount = 2 + Math.floor(Math.random() * 3);
+      const branchCount = LORE_LAYOUT.CRUCIO_BRANCH_MIN + Math.floor(Math.random() * LORE_LAYOUT.CRUCIO_BRANCH_RANGE);
       for (let b = 0; b < branchCount; b++) {
         const idx = Math.floor(Math.random() * pts.length);
         const p = pts[idx];
-        branches.push(this.walk(p.x, p.y, width, height, 5, 45));
+        branches.push(this.walk(p.x, p.y, width, height, LORE_LAYOUT.CRUCIO_BRANCH_STEPS, LORE_LAYOUT.CRUCIO_BRANCH_STEP_LEN));
       }
 
-      cracks.push({ pts, branches, w: 1 + Math.random() * 1.5 });
+      cracks.push({ pts, branches, w: LORE_LAYOUT.CRUCIO_WIDTH_MIN + Math.random() * LORE_LAYOUT.CRUCIO_WIDTH_RANGE });
     }
     return cracks;
   }
@@ -101,7 +99,7 @@ export class Crucio implements IEasterEgg {
     let cy = y;
 
     for (let i = 0; i < steps; i++) {
-      angle += (Math.random() - 0.5) * 0.9;
+      angle += (Math.random() - 0.5) * LORE_LAYOUT.CRUCIO_ANGLE_JITTER;
       cx += Math.cos(angle) * stepLen;
       cy += Math.sin(angle) * stepLen;
       if (cx < 0 || cx > width || cy < 0 || cy > height) break;
@@ -117,11 +115,10 @@ export class Crucio implements IEasterEgg {
   ): void {
     if (progress <= 0) return;
 
-    // Свечение под трещинами — светлая подложка
     ctx.save();
-    ctx.globalAlpha = 0.35 * progress;
-    ctx.strokeStyle = '#fff8e0';
-    ctx.lineWidth = 5;
+    ctx.globalAlpha = LORE_LAYOUT.CRUCIO_GLOW_ALPHA * progress;
+    ctx.strokeStyle = LORE_COLORS.CRUCIO_GLOW;
+    ctx.lineWidth = LORE_LAYOUT.CRUCIO_GLOW_WIDTH;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     for (const c of cracks) {
@@ -132,10 +129,9 @@ export class Crucio implements IEasterEgg {
     }
     ctx.restore();
 
-    // Основная линия трещины
     ctx.save();
-    ctx.globalAlpha = 0.9 * progress;
-    ctx.strokeStyle = '#2a0a00';
+    ctx.globalAlpha = LORE_LAYOUT.CRUCIO_LINE_ALPHA * progress;
+    ctx.strokeStyle = LORE_COLORS.CRUCIO_LINE;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     for (const c of cracks) {

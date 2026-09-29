@@ -1,6 +1,8 @@
 import type { IEasterEgg } from '../IEasterEgg';
 import { renderText } from './RenderText';
 import { appearPauseDisappear } from './AppearPauseDisappear';
+import { LORE_COLORS, LORE_LAYOUT } from '../config/lore.hp.config';
+import { FONT_TOM } from '../../config/fonts';
 
 export abstract class BaseImageEgg implements IEasterEgg {
   abstract readonly type: string;
@@ -20,13 +22,13 @@ export abstract class BaseImageEgg implements IEasterEgg {
   ): Promise<void> {
     const img = await this.loadSvg(this.svgUrl);
 
-    const size = Math.min(width, height) * 0.5;
+    const size = Math.min(width, height) * LORE_LAYOUT.EGG_IMAGE_SIZE_RATIO;
     const x = (width - size) / 2;
     const y = this.getImageY(height, size);
 
-    const fontSize = width * 0.06;
+    const fontSize = width * LORE_LAYOUT.EGG_FONT_SIZE_RATIO;
     const maxWidth = width - fontSize * 2;
-    const lineHeight = fontSize * 1.3;
+    const lineHeight = fontSize * LORE_LAYOUT.EGG_LINE_HEIGHT_RATIO;
     const startX = fontSize;
     const startY = height * this.textYRatio;
 
@@ -39,7 +41,7 @@ export abstract class BaseImageEgg implements IEasterEgg {
   }
 
   protected getImageY(height: number, _size: number): number {
-    return height * 0.1;
+    return height * LORE_LAYOUT.EGG_IMAGE_Y_TOP;
   }
 
   private loadSvg(url: string): Promise<HTMLImageElement> {
@@ -77,20 +79,20 @@ export abstract class BaseImageEgg implements IEasterEgg {
 
     if (this.useGlow && this.glowColor) {
       ctx.save();
-      ctx.fillStyle = `${this.glowColor}${0.2 * alpha})`;
+      ctx.fillStyle = `${this.glowColor}${LORE_LAYOUT.BASE_IMAGE_MULTIPLY_ALPHA * alpha})`;
       ctx.fillRect(0, 0, width, height);
       ctx.restore();
     }
 
     renderText(ctx, response, {
       fontSize,
-      color: '#1a1a3a',
+      color: LORE_COLORS.EGG_TEXT_DEFAULT,
       alpha,
       startX,
       startY,
       maxWidth,
       lineHeight,
-      fontFamily: 'Gabriela',
+      fontFamily: FONT_TOM,
     });
   }
 }

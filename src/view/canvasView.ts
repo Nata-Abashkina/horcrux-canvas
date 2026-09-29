@@ -1,7 +1,7 @@
 // src/view/canvasView.ts
 import type { ICanvasView, IPixelPoint } from "../types";
 import { FONT_INPUT } from "../config/fonts";
-import { COLORS } from "../config/visual";
+import { COLORS } from "../config/core.theme.config";
 
 export class CanvasView implements ICanvasView {
   private readonly ctx: CanvasRenderingContext2D;

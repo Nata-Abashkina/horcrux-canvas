@@ -1,6 +1,7 @@
 import type { IEasterEgg } from '../IEasterEgg';
 import { appearPauseDisappear } from '../shared/AppearPauseDisappear';
 import { renderCipher } from '../shared/RenderCipher';
+import { LORE_COLORS, LORE_LAYOUT } from '../config/lore.hp.config';
 
 export class Nagini implements IEasterEgg {
   readonly type = 'nagini';
@@ -11,18 +12,17 @@ export class Nagini implements IEasterEgg {
     height: number,
     response: string
   ): Promise<void> {
-    const BASE_FONT_SIZE = 80;
-    const fontSize = Math.max(BASE_FONT_SIZE * 0.5, Math.min(BASE_FONT_SIZE, width * 0.05));
-    const lineHeight = fontSize * 1.4;
+    const fontSize = width * LORE_LAYOUT.NAGINI_FONT_SIZE_RATIO;
+    const lineHeight = fontSize * LORE_LAYOUT.NAGINI_LINE_HEIGHT_RATIO;
     const startX = fontSize;
-    const startY = height * 0.15;
+    const startY = height * LORE_LAYOUT.NAGINI_TEXT_START_Y;
     const maxWidth = width - fontSize * 2;
 
     const draw = (alpha: number) => {
       ctx.clearRect(0, 0, width, height);
       renderCipher(ctx, response, {
         fontSize,
-        color: '#1a0000',
+        color: LORE_COLORS.NAGINI_TEXT,
         alpha,
         startX,
         startY,
