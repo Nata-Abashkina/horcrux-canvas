@@ -95,3 +95,8 @@ export interface IAIClientService {
   sendMessage(prompt: string, imageBase64?: string): Promise<string>;
   setLanguage(config: ILangInterface): void;
 }
+
+export interface IChatMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}

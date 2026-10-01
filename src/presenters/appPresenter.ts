@@ -1,12 +1,14 @@
 // src/presenters/appPresenter.ts
 import type { IDiaryModel, IInputView, IGuardrailsService, IAIClientService } from '../types';
 import type { ILangInterface } from '../config/lang.interface';
+import type { RateLimiterService } from '../services/RateLimiterService';
 
 export class AppPresenter {
   private readonly diaryModel: IDiaryModel;
   private readonly guardrailsService: IGuardrailsService;
   private readonly inputView: IInputView;
   private readonly aiClient: IAIClientService;
+  private readonly rateLimiter: RateLimiterService;
 
   private isProcessingEvent: boolean = false;
 
@@ -14,12 +16,14 @@ export class AppPresenter {
     diaryModel: IDiaryModel,
     guardrailsService: IGuardrailsService,
     inputView: IInputView,
-    aiClient: IAIClientService
+    aiClient: IAIClientService,
+    rateLimiter: RateLimiterService
   ) {
     this.diaryModel = diaryModel;
     this.guardrailsService = guardrailsService;
     this.inputView = inputView;
     this.aiClient = aiClient;
+    this.rateLimiter = rateLimiter;
   }
 
   public bindEvents(buttonElement: HTMLButtonElement): void {
@@ -31,7 +35,6 @@ export class AppPresenter {
     });
   }
 
-  // Публичный — вызывается из main.ts через diaryModel.subscribe()
   public handleModelUpdate(): void {
     if (this.isProcessingEvent) return;
 
@@ -77,33 +80,66 @@ export class AppPresenter {
       }
 
       // 2. Guardrails
-      let finalResponse = '';
       const guardrailsResult = this.guardrailsService.validate(recognizedText, config);
 
       if (guardrailsResult.status !== 'PASSED') {
-        finalResponse = guardrailsResult.responseText || '';
         this.diaryModel.pendingImage = null;
-      } else {
-        // 3. ИИ
-        const image = this.diaryModel.pendingImage ?? undefined;
-        this.diaryModel.pendingImage = null;
+        this.diaryModel.text = '';
+        this.diaryModel.aiResponse = {
+          text: guardrailsResult.responseText || '',
+          timestamp: Date.now(),
+          isVisible: true,
+        };
+        this.diaryModel.isLoading = false;
+        return;
+      }
 
-        try {
-          const aiResult = await this.aiClient.sendMessage(
-            guardrailsResult.cleanedText,
-            image
-          );
-          finalResponse = typeof aiResult === 'string' ? aiResult : '';
-        } catch {
-          finalResponse = '';
-        }
+      // 3. Лимиты — при превышении Том молчит
+      if (!this.rateLimiter.canProceed()) {
+        this.diaryModel.pendingImage = null;
+        this.diaryModel.text = '';
+        this.diaryModel.isLocked = false;
+        this.diaryModel.isLoading = false;
+        return;
+      }
+
+      // 4. Картинка обязательна
+      const image = this.diaryModel.pendingImage;
+      if (!image) {
+        this.diaryModel.text = '';
+        this.diaryModel.isLocked = false;
+        this.diaryModel.isLoading = false;
+        return;
+      }
+      this.diaryModel.pendingImage = null;
+
+      // 5. ИИ
+      this.rateLimiter.record();
+
+      let finalResponse = '';
+      try {
+        const aiResult = await this.aiClient.sendMessage(
+          guardrailsResult.cleanedText,
+          image
+        );
+        finalResponse = typeof aiResult === 'string' ? aiResult.trim() : '';
+      } catch {
+        finalResponse = '';
       }
 
       this.diaryModel.text = '';
+
+      // Пустой ответ — Том молчит
+      if (finalResponse.length === 0) {
+        this.diaryModel.isLocked = false;
+        this.diaryModel.isLoading = false;
+        return;
+      }
+
       this.diaryModel.aiResponse = {
         text: finalResponse,
         timestamp: Date.now(),
-        isVisible: true
+        isVisible: true,
       };
       this.diaryModel.isLoading = false;
     } catch {

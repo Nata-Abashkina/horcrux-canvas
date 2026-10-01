@@ -34,3 +34,11 @@ Thumbs.db
 *.docx
 *.txt
 ~$*
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Cloudflare
+worker/.wrangler

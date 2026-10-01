@@ -1,6 +1,6 @@
 // src/main.ts
 import { DiaryModel } from "./models/diaryModel";
-import { StrokeService } from "./models/strokeService";
+import { StrokeService } from "./services/strokeService";
 import { OCRService } from "./services/OCRService";
 import { CanvasView } from "./view/canvasView";
 import { CanvasPresenter } from "./presenters/canvasPresenter";
@@ -10,14 +10,13 @@ import { AppPresenter } from "./presenters/appPresenter";
 import { langEn } from "./config/lang.en";
 import { langRU } from "./config/lang.ru";
 import type { ILangInterface } from "./config/lang.interface";
-import { AIClientService } from "./models/aiClientService";
+import { AIClientService } from "./services/aiClientService";
+import { RateLimiterService } from "./services/RateLimiterService";
 
 import { registerLore } from './config/lore.hp';
 
-// Все доступные языки
 const languagesMap: Record<string, ILangInterface> = { ru: langRU, en: langEn };
 
-// НАХОДИМ ФИЗИЧЕСКИЕ ЭЛЕМЕНТЫ В DOM
 const canvasElement = document.getElementById('diary-canvas') as HTMLCanvasElement;
 if (!canvasElement) {
   throw new Error("Критическая ошибка: элемент #diary-canvas не найден в DOM дереве.");
@@ -33,7 +32,6 @@ if (!ctx) {
   throw new Error("Критическая ошибка: не удалось получить 2D контекст холста.");
 }
 
-// Определяем начальный язык по кнопке
 const buttonLocale = langButton.dataset.lang;
 const initialConfig = buttonLocale
   ? languagesMap[buttonLocale]
@@ -43,25 +41,23 @@ if (!initialConfig) {
   throw new Error("Критическая ошибка: нет доступных языков.");
 }
 
-// Создаем модель с языком из кнопки
 const diaryModel = new DiaryModel(initialConfig);
 const strokeService = new StrokeService();
 
-// ЗАПУСКАЕМ СЕТЕВЫЕ И СЕРВИСНЫЕ КОНТУРЫ
 const ocrService = new OCRService();
 const guardrailsService = new GuardrailsService();
 const aiClient = new AIClientService(initialConfig);
+const rateLimiter = new RateLimiterService();
 
-// СОЗДАЕМ ТУПЫЕ ВЬЮХИ
 const canvasView = new CanvasView(ctx);
 const inputView = new InputView(canvasElement, langButton);
 
-// СОБИРАЕМ ПРЕЗЕНТЕРЫ
 const appPresenter = new AppPresenter(
   diaryModel,
   guardrailsService,
   inputView,
-  aiClient
+  aiClient,
+  rateLimiter
 );
 
 const canvasPresenter = new CanvasPresenter(
@@ -72,12 +68,10 @@ const canvasPresenter = new CanvasPresenter(
   canvasElement
 );
 
-// ПОДПИСКА НА МОДЕЛЬ — ЯВНАЯ, ПОРЯДОК ЗАДАЁМ ЗДЕСЬ
 diaryModel.subscribe(() => appPresenter.handleModelUpdate());
 diaryModel.subscribe(() => canvasPresenter.handleModelUpdate());
 
 registerLore();
 
-// ОФИЦИАЛЬНЫЙ СТАРТ СИСТЕМЫ
 appPresenter.bindEvents(langButton);
 canvasPresenter.init();
