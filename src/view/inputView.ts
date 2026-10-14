@@ -2,7 +2,6 @@
 import type { IInputView } from "../types";
 
 export class InputView implements IInputView {
-  private readonly ctx: CanvasRenderingContext2D;
   private readonly langButton: HTMLButtonElement;
 
   constructor(canvas: HTMLCanvasElement, button: HTMLButtonElement) {
@@ -11,8 +10,6 @@ export class InputView implements IInputView {
     if (!context) {
       throw new Error('Не удалось получить 2D контекст канваса');
     }
-
-    this.ctx = context;
     this.langButton = button;
   }
 
