@@ -27,10 +27,6 @@ export interface ICanvasView {
   drawTextLine(line: string, x: number, y: number, font: string, alpha: number): void;
   measureText(text: string, font: string): number;
 
-  // Впитывание: используется через ctx (см. getContext)
-  drawFadingStroke(points: IPixelPoint[], alpha: number, lineWidth: number): void;
-  drawFadingChar(char: string, x: number, y: number, font: string, alpha: number): void;
-
   // Точка расширения: надстройки (пасхалки) получают ctx отсюда.
   // View не знает, зачем. Если надстройку удалить — метод остаётся.
   getContext(): CanvasRenderingContext2D;
@@ -38,8 +34,6 @@ export interface ICanvasView {
 
 export interface IInputView {
   updateLangButton(localeName: string): void;
-  renderUserText(text: string, x: number, y: number, fontSize: number): void;
-  renderAIResponse(text: string, x: number, y: number, fontSize: number): void;
 }
 
 export interface IStrokeService {

@@ -25,7 +25,7 @@ function getCorsHeaders(origin: string, allowedList: string): Record<string, str
     'Access-Control-Allow-Origin': matched,
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Max-Age': '86400',
+    'Access-Control-Max-Age': '600',
     'Vary': 'Origin',
   };
 }

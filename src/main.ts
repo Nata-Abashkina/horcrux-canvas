@@ -7,15 +7,11 @@ import { CanvasPresenter } from "./presenters/canvasPresenter";
 import { GuardrailsService } from "./services/guardrails";
 import { InputView } from "./view/inputView";
 import { AppPresenter } from "./presenters/appPresenter";
-import { langEn } from "./config/lang.en";
-import { langRU } from "./config/lang.ru";
-import type { ILangInterface } from "./config/lang.interface";
+import { LANGUAGES_MAP } from "./config/languages";
 import { AIClientService } from "./services/aiClientService";
 import { RateLimiterService } from "./services/RateLimiterService";
 
 import { registerLore } from './config/lore.hp';
-
-const languagesMap: Record<string, ILangInterface> = { ru: langRU, en: langEn };
 
 const canvasElement = document.getElementById('diary-canvas') as HTMLCanvasElement;
 if (!canvasElement) {
@@ -34,8 +30,8 @@ if (!ctx) {
 
 const buttonLocale = langButton.dataset.lang;
 const initialConfig = buttonLocale
-  ? languagesMap[buttonLocale]
-  : Object.values(languagesMap)[0];
+  ? LANGUAGES_MAP[buttonLocale]
+  : Object.values(LANGUAGES_MAP)[0];
 
 if (!initialConfig) {
   throw new Error("Критическая ошибка: нет доступных языков.");

@@ -202,6 +202,37 @@ export class CanvasPresenter implements ICanvasPresenter {
     return base * (LAYOUT.SCALE_MIN + LAYOUT.SCALE_RANGE * clamped);
   }
 
+  // Метрики для текста Тома. Считаются от ширины экрана,
+  // а не от диапазона MIN/MAX_SCREEN. Это даёт предсказуемое
+  // количество символов в строке на любом устройстве.
+  private getTomResponseMetrics(): {
+    padding: number;
+    fontSize: number;
+    lineHeight: number;
+    startY: number;
+    maxWidth: number;
+  } {
+    const w = this.currentWidth;
+    const h = this.currentHeight;
+
+    // Горизонтальный отступ: 6% ширины, но не меньше 16px
+    const padding = Math.max(16, w * 0.06);
+
+    // Шрифт: ~5.5% ширины, зажат в [16, 48]px
+    const fontSize = Math.max(16, Math.min(48, w * 0.055));
+
+    // Межстрочный интервал
+    const lineHeight = fontSize * 1.35;
+
+    // Стартовая Y — чуть выше центра
+    const startY = h * 0.22;
+
+    // Максимальная ширина строки
+    const maxWidth = w - padding * 2;
+
+    return { padding, fontSize, lineHeight, startY, maxWidth };
+  }
+
   // ============ CRUCIO LAYER ============
 
   private captureCrucioLayer(): void {
@@ -301,11 +332,8 @@ export class CanvasPresenter implements ICanvasPresenter {
   private renderAIResponseText(alpha: number): void {
     if (!this.aiResponseText || alpha <= 0) return;
 
-    const fontSize = this.getResponsive(LAYOUT.BASE_FONT_SIZE);
-    const lineHeight = this.getResponsive(LAYOUT.LINE_HEIGHT_TOM);
-    const startX = this.getResponsive(LAYOUT.START_X);
-    const startY = this.currentHeight * 0.25;
-    const maxWidth = this.currentWidth - startX * 2;
+    const { padding, fontSize, lineHeight, startY, maxWidth } =
+      this.getTomResponseMetrics();
     const font = `${fontSize}px '${FONT_TOM}'`;
 
     const words = this.aiResponseText.split(' ');
@@ -317,7 +345,7 @@ export class CanvasPresenter implements ICanvasPresenter {
       const width = this.view.measureText(testLine, font);
 
       if (width > maxWidth && line) {
-        this.view.drawTextLine(line, startX, y, font, alpha);
+        this.view.drawTextLine(line, padding, y, font, alpha);
         line = word;
         y += lineHeight;
       } else {
@@ -326,7 +354,7 @@ export class CanvasPresenter implements ICanvasPresenter {
     }
 
     if (line) {
-      this.view.drawTextLine(line, startX, y, font, alpha);
+      this.view.drawTextLine(line, padding, y, font, alpha);
     }
   }
 

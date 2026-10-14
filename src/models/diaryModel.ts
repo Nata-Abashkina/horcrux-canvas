@@ -1,7 +1,5 @@
-// src/models/diaryModel.ts
-import { langEn } from "../config/lang.en";
 import type { ILangInterface } from "../config/lang.interface";
-import { langRU } from "../config/lang.ru";
+import { LANGUAGES_MAP } from "../config/languages";
 import type { IDiaryModel, IAIResponse } from "../types";
 
 export class DiaryModel implements IDiaryModel {
@@ -13,7 +11,6 @@ export class DiaryModel implements IDiaryModel {
   private _aiResponse: IAIResponse | null = null;
   private _pendingImage: string | null = null;
 
-  private readonly languagesMap: Record<string, ILangInterface> = { ru: langRU, en: langEn };
   private listeners: Array<() => void> = [];
 
   constructor(initialConfig: ILangInterface) {
@@ -65,7 +62,7 @@ export class DiaryModel implements IDiaryModel {
   }
 
   get languages(): Record<string, ILangInterface> {
-    return this.languagesMap;
+    return LANGUAGES_MAP;
   }
 
   get text(): string {

@@ -78,39 +78,6 @@ export class CanvasView implements ICanvasView {
     this.ctx.lineJoin = "round";
   }
 
-  public drawFadingStroke(points: IPixelPoint[], alpha: number, lineWidth: number): void {
-    if (points.length < 2) return;
-
-    this.ctx.save();
-    this.ctx.globalAlpha = alpha;
-    this.ctx.lineWidth = lineWidth;
-    this.ctx.strokeStyle = COLORS.USER_INK;
-    this.ctx.lineCap = "round";
-    this.ctx.lineJoin = "round";
-
-    this.ctx.beginPath();
-    for (let i = 0; i < points.length; i++) {
-      const p = points[i];
-      if (p.isNew) {
-        this.ctx.moveTo(p.x, p.y);
-      } else {
-        this.ctx.lineTo(p.x, p.y);
-      }
-    }
-    this.ctx.stroke();
-
-    this.ctx.restore();
-  }
-
-  public drawFadingChar(char: string, x: number, y: number, font: string, alpha: number): void {
-    this.ctx.save();
-    this.ctx.font = font;
-    this.ctx.fillStyle = COLORS.USER_INK;
-    this.ctx.globalAlpha = alpha;
-    this.ctx.fillText(char, x, y);
-    this.ctx.restore();
-  }
-
   public drawTextLine(line: string, x: number, y: number, font: string, alpha: number): void {
     this.ctx.save();
     this.ctx.font = font;

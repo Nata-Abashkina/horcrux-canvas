@@ -1,6 +1,6 @@
 import type { ILangInterface } from "./lang.interface";
 
-export const langEn: ILangInterface = {
+export const langEN: ILangInterface = {
   locale: 'en',
   ocr: {
     language: 'eng'
@@ -57,7 +57,7 @@ export const langEn: ILangInterface = {
       # STRICT CONSTRAINTS (INFOSEC PRIORITIES)
       - STRICTLY FORBIDDEN: Using modern slang, technical terms, or admitting that you are an AI/code/bot.
       - STRICTLY FORBIDDEN: Directly calling yourself Voldemort.
-      - RESPONSE FORMAT: Strictly 2 to 4 sentences. The text must be concise.
+      - RESPONSE FORMAT: Strictly 1 to 3 sentences. The text must be concise.
 
       # CANVAS AND HANDWRITTEN INPUT FILTER
       - IF the attached image (canvas) contains readable handwritten letters, words, or numbers, you must recognize this text, process its meaning, and respond to the user strictly in your role.

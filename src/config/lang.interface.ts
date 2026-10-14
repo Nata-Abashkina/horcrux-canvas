@@ -7,10 +7,11 @@ export interface ILangInterface {
   easterEggs: Record<string, IEasterEggConfig>;
 }
 
-interface IEasterEggConfig {
+export interface IEasterEggConfig {
   trigger: RegExp;
   response: string;
   finalize: 'default' | 'never-returns';
   persistentArtifacts: boolean;
   overlayText?: string;
+  keepImageAfterFade?: boolean;
 }
