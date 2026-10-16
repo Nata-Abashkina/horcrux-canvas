@@ -1,5 +1,11 @@
 // src/presenters/appPresenter.ts
-import type { IDiaryModel, IInputView, IGuardrailsService, IAIClientService } from '../types';
+import type {
+  IDiaryModel,
+  IInputView,
+  IGuardrailsService,
+  IAIClientService,
+  ICanvasPresenter,
+} from '../types';
 import type { ILangInterface } from '../config/lang.interface';
 import type { RateLimiterService } from '../services/RateLimiterService';
 
@@ -9,6 +15,7 @@ export class AppPresenter {
   private readonly inputView: IInputView;
   private readonly aiClient: IAIClientService;
   private readonly rateLimiter: RateLimiterService;
+  private readonly canvasPresenter: ICanvasPresenter;
 
   private isProcessingEvent: boolean = false;
 
@@ -17,13 +24,15 @@ export class AppPresenter {
     guardrailsService: IGuardrailsService,
     inputView: IInputView,
     aiClient: IAIClientService,
-    rateLimiter: RateLimiterService
+    rateLimiter: RateLimiterService,
+    canvasPresenter: ICanvasPresenter,
   ) {
     this.diaryModel = diaryModel;
     this.guardrailsService = guardrailsService;
     this.inputView = inputView;
     this.aiClient = aiClient;
     this.rateLimiter = rateLimiter;
+    this.canvasPresenter = canvasPresenter;
   }
 
   public bindEvents(buttonElement: HTMLButtonElement): void {
@@ -69,7 +78,8 @@ export class AppPresenter {
       const config = this.diaryModel.config;
       const recognizedText = this.diaryModel.text;
 
-      // 1. Пасхалка
+      // 1. Пасхалка — finalizeSession вызовет CanvasPresenter
+      //    в handleModelUpdate, когда эффект завершится.
       const eggType = this.findEasterEgg(recognizedText, config);
       if (eggType) {
         this.diaryModel.text = '';
@@ -79,9 +89,9 @@ export class AppPresenter {
         return;
       }
 
-      // 2. Guardrails
+      // 2. Guardrails — ставим aiResponse, CanvasPresenter
+      //    отрисует и вызовет finalizeSession в конце анимации.
       const guardrailsResult = this.guardrailsService.validate(recognizedText, config);
-
       if (guardrailsResult.status !== 'PASSED') {
         this.diaryModel.pendingImage = null;
         this.diaryModel.text = '';
@@ -94,21 +104,23 @@ export class AppPresenter {
         return;
       }
 
-      // 3. Лимиты — при превышении Том молчит
+      // 3. Лимиты — aiResponse НЕ ставится, чистим здесь
       if (!this.rateLimiter.canProceed()) {
         this.diaryModel.pendingImage = null;
         this.diaryModel.text = '';
         this.diaryModel.isLocked = false;
         this.diaryModel.isLoading = false;
+        this.canvasPresenter.finalizeSession();
         return;
       }
 
-      // 4. Картинка обязательна
+      // 4. Картинка обязательна — aiResponse НЕ ставится, чистим здесь
       const image = this.diaryModel.pendingImage;
       if (!image) {
         this.diaryModel.text = '';
         this.diaryModel.isLocked = false;
         this.diaryModel.isLoading = false;
+        this.canvasPresenter.finalizeSession();
         return;
       }
       this.diaryModel.pendingImage = null;
@@ -129,13 +141,16 @@ export class AppPresenter {
 
       this.diaryModel.text = '';
 
-      // Пустой ответ — Том молчит
+      // Пустой ответ — Том молчит, aiResponse НЕ ставится, чистим здесь
       if (finalResponse.length === 0) {
         this.diaryModel.isLocked = false;
         this.diaryModel.isLoading = false;
+        this.canvasPresenter.finalizeSession();
         return;
       }
 
+      // Успешный ответ — aiResponse ставится, CanvasPresenter
+      // отрисует и вызовет finalizeSession в конце анимации.
       this.diaryModel.aiResponse = {
         text: finalResponse,
         timestamp: Date.now(),
@@ -145,6 +160,7 @@ export class AppPresenter {
     } catch {
       this.diaryModel.isLocked = false;
       this.diaryModel.isLoading = false;
+      this.canvasPresenter.finalizeSession();
     } finally {
       this.isProcessingEvent = false;
     }

@@ -57,7 +57,7 @@
 - **Связь:** Observer — `IDiaryModel.subscribe(listener)` возвращает `unsubscribe`. Подписчики — массив, а не один бокэк.
 - **Лор отделён от ядра.** Ядро — чат с ИИ и холст. Лор — надстройка, меняется за 15 минут.
 - **Пасхалки — изолированный слой.** `src/easterEggs/` — движок + 9 эффектов. Ядро не знает про пасхалки. Точка расширения — `ICanvasView.getContext()`.
-- **Прокси — тонкий.** Без логики, без счётчиков, без фильтров. Принял → добавил ключ → переслал в DeepSeek → вернул ответ.
+- **Прокси с защитой.** Origin-проверка, per-IP лимит (10/мин, бан 3 часа), глобальный дневной лимит (5000 запросов). In-memory, без KV.
 
 ### Замена лора
 
@@ -102,6 +102,7 @@
 
 - `recognize(canvasElement, langCode): Promise<string>`
 - `terminate(): Promise<void>`
+- `preload(langCode): Promise<void>` — ленивая предзагрузка воркера + прогрев
 
 ### IGuardrailsService
 
@@ -259,6 +260,7 @@
 - Без фильтрации. Отдаёт всё, что распознал — включая мусор.
 - Назначение OCR: только `findEasterEgg` + `validate` (guardrails). В ИИ OCR-текст уходит как `prompt` (в историю), картинка — отдельно.
 - После успешного OCR: `CanvasPresenter` сохраняет `bufferedCanvas.toDataURL('image/png')` в `IDiaryModel.pendingImage`.
+- OCR запускается параллельно с анимацией впитывания — не после неё. Воркер прогревается лениво при первом pointerdown. `recognize()` обёрнут в таймаут (15 сек).
 - Если OCR вернул пусто: `pendingImage` не ставится, модель не дёргается, `isLocked = false`, `finalizeSession()`. **Ответа нет — как в каноне, дневник реагирует только на осмысленный ввод.**
 
 ### 9.2. Guardrails
@@ -353,7 +355,7 @@
 
 | Пасхалка | Тип | Финал | Картинка | Особенности |
 |---|---|---|---|---|
-| AvadaKedavra | `avada_kedavra` | never-returns | нет | зелёная вспышка, вибрация, `while(true)` |
+| AvadaKedavra | `avada_kedavra` | never-returns | нет | зелёная вспышка, вибрация, бесконечный `requestAnimationFrame` |
 | Hogwarts | `hogwarts` | default | да | 4 факультета, картинка |
 | Gryffindor | `gryffindor` | default | да | |
 | Slytherin | `slytherin` | default | да | |

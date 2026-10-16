@@ -85,13 +85,16 @@ export class CanvasPresenter implements ICanvasPresenter {
             }
             if (eggConfig.finalize !== 'never-returns') {
               this.diaryModel.isLocked = false;
+              this.finalizeSession();
             }
           })
           .catch(() => {
             this.diaryModel.isLocked = false;
+            this.finalizeSession();
           });
       } else {
         this.diaryModel.isLocked = false;
+        this.finalizeSession();
       }
       return;
     }
@@ -112,6 +115,14 @@ export class CanvasPresenter implements ICanvasPresenter {
     this.currentHeight = window.innerHeight;
     const dpr = window.devicePixelRatio || 1;
     this.view.setDimensions(this.currentWidth, this.currentHeight, dpr);
+
+    // Ленивая предзагрузка Tesseract при первом pointerdown.
+    // Не блокирует UI, воркер прогревается в фоне.
+    const preloadOnce = () => {
+      this.canvas.removeEventListener("pointerdown", preloadOnce);
+      void this.OCRService.preload?.(this.diaryModel.config.ocr.language);
+    };
+    this.canvas.addEventListener("pointerdown", preloadOnce, { once: true });
 
     this.canvas.addEventListener("pointerdown", (e: PointerEvent) => {
       e.preventDefault();
@@ -202,9 +213,6 @@ export class CanvasPresenter implements ICanvasPresenter {
     return base * (LAYOUT.SCALE_MIN + LAYOUT.SCALE_RANGE * clamped);
   }
 
-  // Метрики для текста Тома. Считаются от ширины экрана,
-  // а не от диапазона MIN/MAX_SCREEN. Это даёт предсказуемое
-  // количество символов в строке на любом устройстве.
   private getTomResponseMetrics(): {
     padding: number;
     fontSize: number;
@@ -215,19 +223,10 @@ export class CanvasPresenter implements ICanvasPresenter {
     const w = this.currentWidth;
     const h = this.currentHeight;
 
-    // Горизонтальный отступ: 6% ширины, но не меньше 16px
     const padding = Math.max(16, w * 0.06);
-
-    // Шрифт: ~5.5% ширины, зажат в [16, 48]px
     const fontSize = Math.max(16, Math.min(48, w * 0.055));
-
-    // Межстрочный интервал
     const lineHeight = fontSize * 1.35;
-
-    // Стартовая Y — чуть выше центра
     const startY = h * 0.22;
-
-    // Максимальная ширина строки
     const maxWidth = w - padding * 2;
 
     return { padding, fontSize, lineHeight, startY, maxWidth };
@@ -319,6 +318,9 @@ export class CanvasPresenter implements ICanvasPresenter {
 
         this.diaryModel.isLocked = false;
         this.diaryModel.aiResponse = null;
+
+        // Сессия закрыта — чистим
+        this.finalizeSession();
       }
     };
 
@@ -361,7 +363,6 @@ export class CanvasPresenter implements ICanvasPresenter {
   // ============ ВВОД ============
 
   private handlePointerDown(e: PointerEvent): void {
-    // Блокировка: мышь не работает, пока идёт печать
     if (this.diaryModel.isLocked || this.isTyping) {
       return;
     }
@@ -427,13 +428,12 @@ export class CanvasPresenter implements ICanvasPresenter {
         return;
       }
       this.isDrawing = false;
-      this.diaryModel.isLocked = true;   // ← блокируем ввод до конца ответа Тома
+      this.diaryModel.isLocked = true;   // блокируем ввод до конца ответа Тома
       this.executeAbsorptionLoop();
     }, ANIMATIONS.INPUT_DEBOUNCE_MS);
   }
 
   private handleDesktopInput(e: KeyboardEvent): void {
-    // Блокировка: клавиатура не работает, пока идёт рисование
     if (this.diaryModel.isLocked || this.isDrawing) {
       return;
     }
@@ -478,7 +478,7 @@ export class CanvasPresenter implements ICanvasPresenter {
           return;
         }
         this.isTyping = false;
-        this.diaryModel.isLocked = true;   // ← блокируем ввод до конца ответа Тома
+        this.diaryModel.isLocked = true;   // блокируем ввод до конца ответа Тома
         this.executeAbsorptionLoop();
       }, ANIMATIONS.INPUT_DEBOUNCE_MS);
     }
@@ -577,6 +577,13 @@ export class CanvasPresenter implements ICanvasPresenter {
       }
     }
 
+    // OCR ЗАПУСКАЕТСЯ ПАРАЛЛЕЛЬНО С АНИМАЦИЕЙ.
+    // Пока идут 180 кадров впитывания (~3 сек), Tesseract уже работает.
+    const ocrPromise = this.OCRService.recognize(
+      ocrBuffer,
+      this.diaryModel.config.ocr.language
+    );
+
     const points = this.strokeService.getPoints();
     const totalInputDuration = this.typedChars.length > 0
       ? this.typedChars[this.typedChars.length - 1].timestamp
@@ -611,14 +618,13 @@ export class CanvasPresenter implements ICanvasPresenter {
 
         this.view.resetFilters();
         this.animationFrameId = null;
-        this.triggerOCRService(ocrBuffer);
+        this.handleOCRResult(ocrPromise, ocrBuffer);
       }
     };
 
     this.animationFrameId = requestAnimationFrame(tick);
   }
 
-  // ОРИГИНАЛЬНАЯ логика с Безье — восстановлена.
   private drawFadingStrokes(
     ctx: CanvasRenderingContext2D,
     points: IPixelPoint[],
@@ -707,33 +713,42 @@ export class CanvasPresenter implements ICanvasPresenter {
 
   // ============ OCR ============
 
-  private triggerOCRService(bufferedCanvas: HTMLCanvasElement): void {
-    this.diaryModel.isLocked = true;
+  /**
+   * Принимает уже запущенный промис OCR (запущен параллельно с анимацией).
+   * Если текст непустой — кладёт pendingImage и text в модель, AppPresenter
+   * продолжит обработку. Если пусто — разблокирует ввод и финализирует сессию.
+   */
+  private handleOCRResult(
+    ocrPromise: Promise<string>,
+    bufferedCanvas: HTMLCanvasElement
+  ): void {
     this.diaryModel.isLoading = true;
 
-    this.OCRService.recognize(bufferedCanvas, this.diaryModel.config.ocr.language)
+    ocrPromise
       .then((recognizedText: string) => {
         this.diaryModel.isLoading = false;
 
         if (recognizedText && recognizedText.trim().length > 0) {
           this.diaryModel.pendingImage = bufferedCanvas.toDataURL('image/png');
           this.diaryModel.text = recognizedText;
+          // finalizeSession() здесь НЕ вызывается — сессию закроет
+          // AppPresenter после получения ответа Тома или отказа.
         } else {
+          // OCR пусто → Том молчит, ввод разблокируется
           this.diaryModel.isLocked = false;
+          this.finalizeSession();
         }
       })
       .catch(() => {
         this.diaryModel.isLoading = false;
         this.diaryModel.isLocked = false;
-      })
-      .finally(() => {
         this.finalizeSession();
       });
   }
 
   // ============ ФИНАЛИЗАЦИЯ ============
 
-  private finalizeSession(): void {
+  public finalizeSession(): void {
     this.ocrTimeoutId = null;
     this.caretX = this.getResponsive(LAYOUT.START_X);
     this.caretY = this.getResponsive(LAYOUT.START_Y);

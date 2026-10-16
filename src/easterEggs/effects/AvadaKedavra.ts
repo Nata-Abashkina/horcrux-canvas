@@ -56,10 +56,14 @@ export class AvadaKedavra implements IEasterEgg {
       onClear: () => ctx.clearRect(0, 0, width, height),
     });
 
+    // "Never-returns": дневник убит, ввод не разблокируется.
+    // Держим rAF-цикл живым, но НЕ блокируем главный поток.
+    // Главный поток свободен, вкладка отвечает, CPU в простое.
     setTimeout(() => {
-      while (true) {
-        // Пустота
-      }
+      const freezeForever = () => {
+        requestAnimationFrame(freezeForever);
+      };
+      requestAnimationFrame(freezeForever);
     }, LORE_ANIMATIONS.AVADA_FREEZE_DELAY_MS);
   }
 }
