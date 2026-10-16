@@ -65,6 +65,7 @@ export interface IDiaryModel {
 export interface IOCRService {
   recognize(canvasElement: HTMLCanvasElement, langCode: string): Promise<string>;
   terminate(): Promise<void>;
+  preload?(langCode: string): Promise<void>
 }
 
 export interface ICanvasPresenter {
@@ -73,6 +74,7 @@ export interface ICanvasPresenter {
   handleResize(): void;
   clearCanvas(): void;
   handleModelUpdate(): void;
+  finalizeSession(): void;
 }
 
 export interface IGuardrailsResult {

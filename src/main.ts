@@ -48,20 +48,21 @@ const rateLimiter = new RateLimiterService();
 const canvasView = new CanvasView(ctx);
 const inputView = new InputView(canvasElement, langButton);
 
-const appPresenter = new AppPresenter(
-  diaryModel,
-  guardrailsService,
-  inputView,
-  aiClient,
-  rateLimiter
-);
-
 const canvasPresenter = new CanvasPresenter(
   canvasView,
   strokeService,
   ocrService,
   diaryModel,
   canvasElement
+);
+
+const appPresenter = new AppPresenter(
+  diaryModel,
+  guardrailsService,
+  inputView,
+  aiClient,
+  rateLimiter,
+  canvasPresenter
 );
 
 diaryModel.subscribe(() => appPresenter.handleModelUpdate());
