@@ -1,4 +1,3 @@
-// src/presenters/canvasPresenter.ts
 import type {
   ICanvasPresenter,
   ICanvasView,
@@ -116,8 +115,6 @@ export class CanvasPresenter implements ICanvasPresenter {
     const dpr = window.devicePixelRatio || 1;
     this.view.setDimensions(this.currentWidth, this.currentHeight, dpr);
 
-    // Ленивая предзагрузка Tesseract при первом pointerdown.
-    // Не блокирует UI, воркер прогревается в фоне.
     const preloadOnce = () => {
       this.canvas.removeEventListener("pointerdown", preloadOnce);
       void this.OCRService.preload?.(this.diaryModel.config.ocr.language);
@@ -133,30 +130,26 @@ export class CanvasPresenter implements ICanvasPresenter {
       this.handlePointerDown(e);
     }, { passive: false });
 
+    // ИЗМЕНЕНО: pointermove больше не блокируется по isLocked —
+    // handlePointerMove сам проверяет isLocked первой строкой.
     this.canvas.addEventListener("pointermove", (e: PointerEvent) => {
       e.preventDefault();
-      if (this.diaryModel.isLocked) {
-        e.stopPropagation();
-        return;
-      }
       this.handlePointerMove(e);
     }, { passive: false });
 
+    // ИЗМЕНЕНО: pointerup всегда доходит до handlePointerUp, даже если
+    // isLocked стал true во время штриха. Иначе isDrawing залипнет.
     this.canvas.addEventListener("pointerup", (e: PointerEvent) => {
       e.preventDefault();
-      if (this.diaryModel.isLocked) {
-        e.stopPropagation();
-        return;
-      }
       this.handlePointerUp(e);
     }, { passive: false });
 
+    // КАК В ИСХОДНИКЕ: pointercancel → handlePointerUp.
     this.canvas.addEventListener("pointercancel", (e: PointerEvent) => {
       e.preventDefault();
       this.handlePointerUp(e);
     }, { passive: false });
 
-    // iOS Safari: подавляем выделение / контекстное меню / drag по долгому тапу
     this.canvas.addEventListener('contextmenu', (e: Event) => {
       e.preventDefault();
     });
@@ -319,7 +312,6 @@ export class CanvasPresenter implements ICanvasPresenter {
         this.diaryModel.isLocked = false;
         this.diaryModel.aiResponse = null;
 
-        // Сессия закрыта — чистим
         this.finalizeSession();
       }
     };
@@ -367,7 +359,9 @@ export class CanvasPresenter implements ICanvasPresenter {
       return;
     }
 
-    if (this.ocrTimeoutId !== null && this.isDrawing) {
+    // ИЗМЕНЕНО: clearTimeout всегда, без проверки isDrawing.
+    // Буферы strokeService/typedChars здесь НЕ чистим.
+    if (this.ocrTimeoutId !== null) {
       window.clearTimeout(this.ocrTimeoutId);
       this.ocrTimeoutId = null;
     }
@@ -398,7 +392,9 @@ export class CanvasPresenter implements ICanvasPresenter {
       return;
     }
 
-    if (this.isDrawing && e.pointerType === 'mouse' && e.buttons === 0) {
+    // ИЗМЕНЕНО: buttons === 0 для ЛЮБОГО pointerType, не только mouse.
+    // Перо в воздухе (hover) завершает штрих.
+    if (e.buttons === 0) {
       this.handlePointerUp(e);
       return;
     }
@@ -418,6 +414,9 @@ export class CanvasPresenter implements ICanvasPresenter {
       return;
     }
 
+    // ИЗМЕНЕНО: isDrawing сбрасывается сразу, а не внутри таймера.
+    this.isDrawing = false;
+
     if (this.ocrTimeoutId !== null) {
       window.clearTimeout(this.ocrTimeoutId);
     }
@@ -427,8 +426,7 @@ export class CanvasPresenter implements ICanvasPresenter {
         this.handleEasterEggSecondInput();
         return;
       }
-      this.isDrawing = false;
-      this.diaryModel.isLocked = true;   // блокируем ввод до конца ответа Тома
+      this.diaryModel.isLocked = true;
       this.executeAbsorptionLoop();
     }, ANIMATIONS.INPUT_DEBOUNCE_MS);
   }
@@ -478,7 +476,7 @@ export class CanvasPresenter implements ICanvasPresenter {
           return;
         }
         this.isTyping = false;
-        this.diaryModel.isLocked = true;   // блокируем ввод до конца ответа Тома
+        this.diaryModel.isLocked = true;
         this.executeAbsorptionLoop();
       }, ANIMATIONS.INPUT_DEBOUNCE_MS);
     }
@@ -546,8 +544,6 @@ export class CanvasPresenter implements ICanvasPresenter {
     ocrBuffer.height = this.currentHeight * dpr;
     const ocrCtx = ocrBuffer.getContext("2d");
 
-    // ВАЖНО: рисуем в OCR-буфер ТОЛЬКО пользовательский ввод.
-    // Если есть crucioLayer — трещины туда НЕ попадают.
     if (ocrCtx) {
       ocrCtx.scale(dpr, dpr);
 
@@ -577,8 +573,6 @@ export class CanvasPresenter implements ICanvasPresenter {
       }
     }
 
-    // OCR ЗАПУСКАЕТСЯ ПАРАЛЛЕЛЬНО С АНИМАЦИЕЙ.
-    // Пока идут 180 кадров впитывания (~3 сек), Tesseract уже работает.
     const ocrPromise = this.OCRService.recognize(
       ocrBuffer,
       this.diaryModel.config.ocr.language
@@ -713,11 +707,6 @@ export class CanvasPresenter implements ICanvasPresenter {
 
   // ============ OCR ============
 
-  /**
-   * Принимает уже запущенный промис OCR (запущен параллельно с анимацией).
-   * Если текст непустой — кладёт pendingImage и text в модель, AppPresenter
-   * продолжит обработку. Если пусто — разблокирует ввод и финализирует сессию.
-   */
   private handleOCRResult(
     ocrPromise: Promise<string>,
     bufferedCanvas: HTMLCanvasElement
@@ -731,10 +720,7 @@ export class CanvasPresenter implements ICanvasPresenter {
         if (recognizedText && recognizedText.trim().length > 0) {
           this.diaryModel.pendingImage = bufferedCanvas.toDataURL('image/png');
           this.diaryModel.text = recognizedText;
-          // finalizeSession() здесь НЕ вызывается — сессию закроет
-          // AppPresenter после получения ответа Тома или отказа.
         } else {
-          // OCR пусто → Том молчит, ввод разблокируется
           this.diaryModel.isLocked = false;
           this.finalizeSession();
         }
